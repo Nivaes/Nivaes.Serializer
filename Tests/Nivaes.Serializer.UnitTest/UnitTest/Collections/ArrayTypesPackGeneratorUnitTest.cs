@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace Nivaes.Serializer.UnitTest.UnitTest;
+namespace Nivaes.Serializer.UnitTest;
 
 public class ArrayTypesPackGeneratorUnitTest
 {

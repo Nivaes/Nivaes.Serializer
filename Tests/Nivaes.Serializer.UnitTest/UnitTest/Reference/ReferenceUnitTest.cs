@@ -28,7 +28,7 @@ public class ReferenceUnitTest
 
     public class RootModelTestDeserializer : IDeserializer<RootModel>
     {
-        RootModel? IDeserializer<RootModel>.Deserialize(ref PackerReader reader)
+        RootModel IDeserializer<RootModel>.Deserialize(ref PackerReader reader)
         {
             var string1 = reader.ReadString();
             var string2 = reader.ReadString();
@@ -61,7 +61,7 @@ public class ReferenceUnitTest
 
     public class ReferenceModelTestDeserializer : IDeserializer<ReferenceModel>
     {
-        ReferenceModel? IDeserializer<ReferenceModel>.Deserialize(ref PackerReader reader)
+        ReferenceModel IDeserializer<ReferenceModel>.Deserialize(ref PackerReader reader)
         {
             var string1 = reader.ReadString();
             var string2 = reader.ReadString();

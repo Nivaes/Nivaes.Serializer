@@ -1,4 +1,4 @@
-﻿namespace Nivaes.Serializer.UnitTest.UnitTest;
+﻿namespace Nivaes.Serializer.UnitTest;
 
 public class AllTypesPackUnitTest
 {
@@ -111,7 +111,7 @@ public class AllTypesPackUnitTest
 
     public class AllTypesModelDeserializerTest : IDeserializer<AllTypesModel>
     {
-        AllTypesModel? IDeserializer<AllTypesModel>.Deserialize(ref PackerReader reader)
+        AllTypesModel IDeserializer<AllTypesModel>.Deserialize(ref PackerReader reader)
         {
             var value = new AllTypesModel
             {

@@ -34,7 +34,7 @@ public class RecursiveCircularReferenceUnitTest
     public class ReferenceModelTestDeserializer : IDeserializer<ReferenceModel>
     {
         private ReferenceModel? _value;
-        ReferenceModel? IDeserializer<ReferenceModel>.Deserialize(ref PackerReader reader)
+        ReferenceModel IDeserializer<ReferenceModel>.Deserialize(ref PackerReader reader)
         {
             var string1 = reader.ReadString();
             var string2 = reader.ReadString();

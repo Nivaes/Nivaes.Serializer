@@ -26,7 +26,7 @@ public class SimplePackUnitTest
 
     public class SimpleModelTestDeserializer : IDeserializer<SimpleModel>
     {
-        SimpleModel? IDeserializer<SimpleModel>.Deserialize(ref PackerReader reader)
+        SimpleModel IDeserializer<SimpleModel>.Deserialize(ref PackerReader reader)
         {
             var string1 = reader.ReadString();
             var string2 = reader.ReadString();

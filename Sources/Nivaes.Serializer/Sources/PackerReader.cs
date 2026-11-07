@@ -257,7 +257,6 @@ public ref struct PackerReader
         var items = new TReference[size];
         for (int i = 0; i < size; i++)
         {
-            //var item = _recursiveReader.Read<TReference, TSerializer>(ReadInt32(), deserialiceReference);
             items[i] = ReadReference<T, TReference, TSerializer>(deserialiceReference)!;
         }
 

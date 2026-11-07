@@ -34,7 +34,7 @@ public class CircularReferenceUnitTest
     {
         private RootModel? _value;
 
-        RootModel? IDeserializer<RootModel>.Deserialize(ref PackerReader reader)
+        RootModel IDeserializer<RootModel>.Deserialize(ref PackerReader reader)
         {
             var string1 = reader.ReadString();
             var string2 = reader.ReadString();
@@ -89,7 +89,7 @@ public class CircularReferenceUnitTest
     {
         ReferenceModel? _value;
 
-        ReferenceModel? IDeserializer<ReferenceModel>.Deserialize(ref PackerReader reader)
+        ReferenceModel IDeserializer<ReferenceModel>.Deserialize(ref PackerReader reader)
         {
             var string1 = reader.ReadString();
             var string2 = reader.ReadString();

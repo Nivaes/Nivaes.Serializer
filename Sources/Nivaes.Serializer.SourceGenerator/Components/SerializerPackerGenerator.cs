@@ -13,15 +13,15 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var classes = context.SyntaxProvider.ForAttributeWithMetadataName(
+        var types = context.SyntaxProvider.ForAttributeWithMetadataName(
             fullyQualifiedMetadataName: AttributeMetadataName,
-            predicate: static (node, _) => node is ClassDeclarationSyntax,
+            predicate: static (node, _) => node is TypeDeclarationSyntax,
             transform: static (context, cancellationToken) =>
                 (INamedTypeSymbol)context.TargetSymbol
         );
 
         context.RegisterSourceOutput(
-            classes,
+            types,
             static (productionContext, symbol) =>
             {
                 Generate(productionContext, symbol);
@@ -32,8 +32,11 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         SourceProductionContext context,
         INamedTypeSymbol symbol)
     {
-        // Esta versión no contempla clases genéricas ni anidadas.
+        // Esta versión no contempla tipos genéricos ni anidados.
         if (symbol.IsGenericType)
+            return;
+
+        if (symbol.TypeKind is not (TypeKind.Class or TypeKind.Struct))
             return;
 
         var properties = symbol.GetMembers()
@@ -113,8 +116,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         {
             var expression = GetWriteExpression(property);
 
-            sb.AppendLine(
-                $"        {expression}");
+            sb.AppendLine($"        {expression}");
         }
 
         sb.AppendLine("    }");
@@ -135,7 +137,6 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     {
         var typeName = GetTypeName(symbol);
         var deserializerName = SourceGenerationHelper.GetDeserializerClassName(symbol);
-
         var accessibility = GetAccessibility(symbol);
 
         var sb = new StringBuilder();
@@ -151,10 +152,17 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
         sb.AppendLine("{");
 
-        sb.AppendLine($"    private {typeName}? _value;");
-        sb.AppendLine();
+        // Almacenar el objeto deserializado.
+        if (symbol.IsReferenceType)
+            sb.AppendLine($"    private {typeName}? _value;");
+        else
+            sb.AppendLine($"    private {typeName} _value = default!;");
 
-        sb.AppendLine($"    {typeName}? IDeserializer<{typeName}>.Deserialize(");
+        sb.AppendLine();
+       
+        sb.AppendLine(
+            $"    {typeName} IDeserializer<{typeName}>.Deserialize(");
+
         sb.AppendLine("        ref PackerReader reader)");
         sb.AppendLine("    {");
 
@@ -173,7 +181,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         sb.AppendLine();
 
         // Crear el objeto.
-        sb.AppendLine("        _value = new " + typeName);
+        sb.AppendLine($"        _value = new {typeName}");
         sb.AppendLine("        {");
 
         for (var i = 0; i < properties.Length; i++)
@@ -187,10 +195,10 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         sb.AppendLine("        };");
         sb.AppendLine();
 
-        sb.AppendLine("        return _value;");
+        sb.AppendLine("        return _value!;");
         sb.AppendLine("    }");
 
-        // Generar setters para las referencias diferidas.
+        // Generar setters para referencias diferidas.
         foreach (var property in properties)
         {
             if (!HasSerializedReferences(property.Type))
@@ -227,6 +235,19 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         var type = property.Type;
         var value = $"model.{property.Name}";
 
+        // Nullable<T> serializado.
+        if (TryGetNullableUnderlyingType(type, out var nullableType) &&
+            IsSerializedType(nullableType))
+        {
+            var typeName = GetTypeName(nullableType);
+            var serializerName = GetSerializerName(nullableType);
+
+            return
+                $"writer.Write({value}.HasValue);\n" +
+                $"        if ({value}.HasValue)\n" +
+                $"            writer.Write<{typeName}, {serializerName}>({value}.Value);";
+        }
+
         // byte[] tiene tratamiento especial.
         if (IsByteArray(type))
             return $"writer.Write({value});";
@@ -236,7 +257,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         {
             var elementType = arrayType.ElementType;
 
-            if (IsSerializedClass(elementType))
+            if (IsSerializedType(elementType))
             {
                 var elementTypeName = GetTypeName(elementType);
                 var serializerName = GetSerializerName(elementType);
@@ -252,7 +273,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         // IEnumerable<T>, List<T>, ICollection<T>, etc.
         if (IsEnumerableType(type, out var enumerableElement))
         {
-            if (IsSerializedClass(enumerableElement))
+            if (IsSerializedType(enumerableElement))
             {
                 var elementTypeName = GetTypeName(enumerableElement);
                 var serializerName = GetSerializerName(enumerableElement);
@@ -265,14 +286,14 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
                 $"writer.Write<{GetTypeName(enumerableElement)}>({value});";
         }
 
-        // Clases serializadas.
-        if (IsSerializedClass(type))
+        // Clases y structs serializados.
+        if (IsSerializedType(type))
         {
             var referenceType = GetTypeName(type);
-            var referenceSerializer = GetSerializerName(type);
+            var serializerName = GetSerializerName(type);
 
             return
-                $"writer.Write<{referenceType}, {referenceSerializer}>({value});";
+                $"writer.Write<{referenceType}, {serializerName}>({value});";
         }
 
         // Enumeraciones.
@@ -297,6 +318,20 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     {
         var type = property.Type;
 
+        // Nullable<T> serializado.
+        if (TryGetNullableUnderlyingType(type, out var nullableType) &&
+            IsSerializedType(nullableType))
+        {
+            var rootType = GetTypeName(property.ContainingType);
+            var typeName = GetTypeName(nullableType);
+            var deserializerName = GetDeserializerName(nullableType);
+
+            return
+                $"reader.ReadBoolean() " +
+                $"? reader.ReadReference<{rootType}, {typeName}, {deserializerName}>() " +
+                $" : ({GetTypeName(type)})null";
+        }
+
         // byte[] tiene tratamiento especial.
         if (IsByteArray(type))
             return "reader.ReadBytes()";
@@ -306,14 +341,20 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         {
             var elementType = arrayType.ElementType;
 
-            if (IsSerializedClass(elementType))
+            if (IsSerializedType(elementType))
             {
                 var rootType = GetTypeName(property.ContainingType);
                 var referenceType = GetTypeName(elementType);
                 var deserializerName = GetDeserializerName(elementType);
 
+                if (elementType.IsReferenceType)
+                {
+                    return
+                        $"reader.ReadArray<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
+                }
+
                 return
-                    $"reader.ReadArray<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
+                    $"reader.ReadArray<{rootType}, {referenceType}, {deserializerName}>()";
             }
 
             return
@@ -323,29 +364,41 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         // IEnumerable<T>, List<T>, ICollection<T>, etc.
         if (IsEnumerableType(type, out var enumerableElement))
         {
-            if (IsSerializedClass(enumerableElement))
+            if (IsSerializedType(enumerableElement))
             {
                 var rootType = GetTypeName(property.ContainingType);
                 var referenceType = GetTypeName(enumerableElement);
                 var deserializerName = GetDeserializerName(enumerableElement);
 
+                if (enumerableElement.IsReferenceType)
+                {
+                    return
+                        $"reader.ReadEnumerable<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
+                }
+
                 return
-                    $"reader.ReadEnumerable<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
+                    $"reader.ReadEnumerable<{rootType}, {referenceType}, {deserializerName}>()";
             }
 
             return
                 $"reader.ReadEnumerable<{GetTypeName(enumerableElement)}>()";
         }
 
-        // Referencias a clases serializadas.
-        if (IsSerializedClass(type))
+        // Clases y structs serializados.
+        if (IsSerializedType(type))
         {
             var rootType = GetTypeName(property.ContainingType);
             var referenceType = GetTypeName(type);
             var deserializerName = GetDeserializerName(type);
 
+            if (type.IsReferenceType)
+            {
+                return
+                    $"reader.ReadReference<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
+            }
+
             return
-                $"reader.ReadReference<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
+                $"reader.ReadReference<{rootType}, {referenceType}, {deserializerName}>()";
         }
 
         // Enumeraciones.
@@ -416,6 +469,10 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
     private static bool IsSupported(ITypeSymbol type)
     {
+        // Nullable<T>.
+        if (TryGetNullableUnderlyingType(type, out var underlyingType))
+            return IsSupported(underlyingType);
+
         if (type.SpecialType is
             SpecialType.System_String or
             SpecialType.System_Array or
@@ -460,7 +517,23 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         if (type.TypeKind == TypeKind.Enum)
             return true;
 
-        return IsSerializedClass(type);
+        return IsSerializedType(type);
+    }
+
+    private static bool TryGetNullableUnderlyingType(
+        ITypeSymbol type,
+        out ITypeSymbol underlyingType)
+    {
+        if (type is INamedTypeSymbol namedType &&
+            namedType.OriginalDefinition.SpecialType ==
+            SpecialType.System_Nullable_T)
+        {
+            underlyingType = namedType.TypeArguments[0];
+            return true;
+        }
+
+        underlyingType = null!;
+        return false;
     }
 
     private static bool IsByteArray(ITypeSymbol type)
@@ -512,12 +585,13 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         return false;
     }
 
-    private static bool IsSerializedClass(ITypeSymbol type)
+    private static bool IsSerializedType(ITypeSymbol type)
     {
         if (type is not INamedTypeSymbol namedType)
             return false;
 
-        if (namedType.TypeKind != TypeKind.Class)
+        if (namedType.TypeKind is not (
+            TypeKind.Class or TypeKind.Struct))
             return false;
 
         if (namedType.IsGenericType)
@@ -528,16 +602,22 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             AttributeMetadataName);
     }
 
+    // Solo las clases serializadas tienen identidad de referencia.
+    private static bool IsSerializedReferenceType(ITypeSymbol type)
+    {
+        return type.IsReferenceType && IsSerializedType(type);
+    }
+
     private static bool HasSerializedReferences(ITypeSymbol type)
     {
-        if (IsSerializedClass(type))
+        if (IsSerializedReferenceType(type))
             return true;
 
         if (type is IArrayTypeSymbol arrayType)
-            return IsSerializedClass(arrayType.ElementType);
+            return IsSerializedReferenceType(arrayType.ElementType);
 
         return IsEnumerableType(type, out var elementType) &&
-               IsSerializedClass(elementType);
+               IsSerializedReferenceType(elementType);
     }
 
     // ---------------------------------------------------------
