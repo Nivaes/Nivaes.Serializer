@@ -240,6 +240,59 @@ public ref struct PackerReader
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Array? ReadMultyArray<T, TReference, TSerializer>(Action<object>? deserializeReference = null)
+    where TSerializer : IDeserializer<TReference>, new()
+    {
+        int rank = ReadInt32();
+
+        if (rank == -1)
+            return null;
+
+        if (rank <= 0)
+            throw new InvalidOperationException("Invalid array rank.");
+
+        // Leer las dimensiones.
+        var lengths = new int[rank];
+
+        for (int i = 0; i < rank; i++)
+        {
+            lengths[i] = ReadInt32();
+
+            if (lengths[i] < 0)
+                throw new InvalidOperationException("Invalid array dimension.");
+        }
+
+        // Crear el array multidimensional.
+        var array = Array.CreateInstance(typeof(TReference), lengths);
+
+        if (array.Length == 0)
+            return array;
+
+        // Leer los elementos.
+        var indices = new int[rank];
+
+        for (int i = 0; i < array.Length; i++)
+        {
+            array.SetValue(
+                ReadReference<T, TReference, TSerializer>(deserializeReference),
+                indices);
+
+            // Incrementar índices multidimensionales.
+            for (int dimension = rank - 1; dimension >= 0; dimension--)
+            {
+                indices[dimension]++;
+
+                if (indices[dimension] < lengths[dimension])
+                    break;
+
+                indices[dimension] = 0;
+            }
+        }
+
+        return array;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IEnumerable<TReference>? ReadEnumerable<T, TReference, TSerializer>(Action<object>? deserialiceReference = null)
         where TSerializer : IDeserializer<TReference>, new()
     {

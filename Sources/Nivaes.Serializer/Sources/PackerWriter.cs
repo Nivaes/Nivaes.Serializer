@@ -326,6 +326,46 @@ public ref partial struct PackerWriter
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write<T, TSerializer>(T[]? value)
+         where TSerializer : ISerializer<T>, new()
+    {
+        if (value is null)
+        {
+            Write(-1);
+            return;
+        }
+
+        Write(value.Length);
+
+        foreach (var item in value)
+        {
+            Write<T, TSerializer>(item);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void WriteArray<T, TSerializer>(Array? value)
+         where TSerializer : ISerializer<T>, new()
+    {
+        if (value is null)
+        {
+            Write(-1);
+            return;
+        }
+
+        // Número de dimensiones.
+        Write(value.Rank);
+
+        // Longitud de cada dimensión.
+        for (int i = 0; i < value.Rank; i++)
+            Write(value.GetLength(i));
+
+        // Serializar elementos.
+        foreach (T item in value)
+            Write<T, TSerializer>(item);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write<T, TSerializer>(IEnumerable<T>? value)
          where TSerializer : ISerializer<T>, new()
     {
@@ -338,24 +378,6 @@ public ref partial struct PackerWriter
         Write(value.Count());
 
         foreach (var item in value)
-        {
-            Write<T, TSerializer>(item);
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write<T, TSerializer>(T[]? value)
-         where TSerializer : ISerializer<T>, new()
-    {
-        if (value is null)
-        {
-            Write(-1);
-            return;
-        }
-
-        Write(value.Length);
-
-        foreach(var item in value)
         {
             Write<T, TSerializer>(item);
         }
