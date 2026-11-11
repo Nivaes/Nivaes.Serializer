@@ -41,12 +41,15 @@
 
 	<Target Name="IncludeSourceGenerator" BeforeTargets="_GetPackageFiles">
 		<ItemGroup>
-			<None Include="$(MSBuildThisFileDirectory)..\Nivaes.Serializer.SourceGenerator\bin\$(Configuration)\netstandard2.0\Nivaes.Serializer.SourceGenerator.dll"
-				  Pack="true"
-				  PackagePath="analyzers/dotnet/cs/"
-				  Visible="false" />
+			<None Include="$(MSBuildThisFileDirectory)..\Nivaes.Serializer.SourceGenerator\bin\$(Configuration)\netstandard2.0\Nivaes.Serializer.SourceGenerator.dll" Pack="true" PackagePath="analyzers/dotnet/cs/" Visible="false" />
 		</ItemGroup>
 	</Target>
+
+	<ItemGroup>
+		<None Include="buildTransitive\Nivaes.Serializer.SourceGenerator.props"
+			  Pack="true"
+			  PackagePath="buildTransitive\Nivaes.Serializer.SourceGenerator.props" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Update="SonarAnalyzer.CSharp">
