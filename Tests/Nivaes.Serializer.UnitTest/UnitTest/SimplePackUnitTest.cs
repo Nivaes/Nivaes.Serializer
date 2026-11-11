@@ -11,7 +11,7 @@ public class SimplePackUnitTest
 
     public class SimpleModel
     {
-        public required string String1 { get; set; }
+        public required string String1 { get; init; }
         public required string String2 { get; set; }
     }
 

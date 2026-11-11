@@ -15,7 +15,7 @@ public class CircularReferenceGenerationUnitTest
         public required string String1 { get; set; }
         public required string String2 { get; set; }
 
-        public required ReferenceModel Reference1 { get; set; }
+        public required ReferenceModel Reference1 { get; init; }
         public required ReferenceModel Reference2 { get; set; }
     }
 

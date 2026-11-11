@@ -205,6 +205,10 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             if (!HasSerializedReferences(property.Type))
                 continue;
 
+            // No generar Reference para propiedades init.
+            if (!CanGenerateReferenceSetter(property))
+                continue;
+
             var propertyType = GetTypeName(property.Type);
 
             sb.AppendLine();
@@ -225,6 +229,17 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         AppendNamespaceEnd(sb, symbol);
 
         return sb.ToString();
+    }
+
+    // ---------------------------------------------------------
+    // INIT PROPERTY DETECTION
+    // ---------------------------------------------------------
+
+    private static bool CanGenerateReferenceSetter(
+        IPropertySymbol property)
+    {
+        return property.SetMethod is not null &&
+               !property.SetMethod.IsInitOnly;
     }
 
     // ---------------------------------------------------------
@@ -367,7 +382,8 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
                 var referenceType = GetTypeName(enumerableElement);
                 var deserializerName = GetDeserializerName(enumerableElement);
 
-                if (enumerableElement.IsReferenceType)
+                if (enumerableElement.IsReferenceType &&
+                    CanGenerateReferenceSetter(property))
                 {
                     return
                         $"reader.ReadEnumerable<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
@@ -388,7 +404,8 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             var referenceType = GetTypeName(type);
             var deserializerName = GetDeserializerName(type);
 
-            if (type.IsReferenceType)
+            if (type.IsReferenceType &&
+                CanGenerateReferenceSetter(property))
             {
                 return
                     $"reader.ReadReference<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
@@ -438,7 +455,8 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
             string expression;
 
-            if (elementType.IsReferenceType)
+            if (elementType.IsReferenceType &&
+                CanGenerateReferenceSetter(property))
             {
                 expression =
                     $"reader.{methodName}<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
