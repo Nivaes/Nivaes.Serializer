@@ -59,16 +59,23 @@ public class ArrayTypesPackUnitTest
 
     public class CollectionsTypesModelDeserializer : IDeserializer<CollectionsTypesModel>
     {
+        private CollectionsTypesModel? _value;
+
         CollectionsTypesModel IDeserializer<CollectionsTypesModel>.Deserialize(ref PackerReader reader)
         {
-            var array1 = reader.ReadArray<CollectionsTypesModel, SimpleModel, SimpleModelTestDeserializer>();
+            var array1 = reader.ReadArray<CollectionsTypesModel, SimpleModel, SimpleModelTestDeserializer>(Referencearray);
 
-            var value = new CollectionsTypesModel
+            _value = new CollectionsTypesModel
             {
                 array = array1!   
             };
 
-            return value;
+            return _value;
+        }
+
+        public void Referencearray(object reference)
+        {
+            _value!.array = (SimpleModel[])reference;
         }
     }
 

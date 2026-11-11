@@ -1,4 +1,6 @@
 ﻿
+using System;
+using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -16,9 +18,8 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         var types = context.SyntaxProvider.ForAttributeWithMetadataName(
             fullyQualifiedMetadataName: AttributeMetadataName,
             predicate: static (node, _) => node is TypeDeclarationSyntax,
-            transform: static (context, cancellationToken) =>
-                (INamedTypeSymbol)context.TargetSymbol
-        );
+            transform: static (context, _) =>
+                (INamedTypeSymbol)context.TargetSymbol);
 
         context.RegisterSourceOutput(
             types,
@@ -159,7 +160,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             sb.AppendLine($"    private {typeName} _value = default!;");
 
         sb.AppendLine();
-       
+
         sb.AppendLine(
             $"    {typeName} IDeserializer<{typeName}>.Deserialize(");
 
@@ -252,22 +253,39 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         if (IsByteArray(type))
             return $"writer.Write({value});";
 
-        // Arrays.
+        // Arrays unidimensionales y multidimensionales.
         if (type is IArrayTypeSymbol arrayType)
         {
             var elementType = arrayType.ElementType;
 
+            // Array unidimensional: T[]
+            if (arrayType.Rank == 1)
+            {
+                if (IsSerializedType(elementType))
+                {
+                    var elementTypeName = GetTypeName(elementType);
+                    var serializerName = GetSerializerName(elementType);
+
+                    return
+                        $"writer.Write<{elementTypeName}, {serializerName}>({value});";
+                }
+
+                return
+                    $"writer.Write<{GetTypeName(elementType)}>({value});";
+            }
+
+            // Array multidimensional: T[,], T[,,], etc.
             if (IsSerializedType(elementType))
             {
                 var elementTypeName = GetTypeName(elementType);
                 var serializerName = GetSerializerName(elementType);
 
                 return
-                    $"writer.Write<{elementTypeName}, {serializerName}>({value});";
+                    $"writer.WriteArray<{elementTypeName}, {serializerName}>({value});";
             }
 
             return
-                $"writer.Write<{GetTypeName(elementType)}>({value});";
+                $"writer.WriteArray<{GetTypeName(elementType)}>({value});";
         }
 
         // IEnumerable<T>, List<T>, ICollection<T>, etc.
@@ -338,28 +356,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
         // Arrays.
         if (type is IArrayTypeSymbol arrayType)
-        {
-            var elementType = arrayType.ElementType;
-
-            if (IsSerializedType(elementType))
-            {
-                var rootType = GetTypeName(property.ContainingType);
-                var referenceType = GetTypeName(elementType);
-                var deserializerName = GetDeserializerName(elementType);
-
-                if (elementType.IsReferenceType)
-                {
-                    return
-                        $"reader.ReadArray<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
-                }
-
-                return
-                    $"reader.ReadArray<{rootType}, {referenceType}, {deserializerName}>()";
-            }
-
-            return
-                $"reader.ReadArray<{GetTypeName(elementType)}>()";
-        }
+            return GetArrayReadExpression(property, arrayType);
 
         // IEnumerable<T>, List<T>, ICollection<T>, etc.
         if (IsEnumerableType(type, out var enumerableElement))
@@ -413,6 +410,77 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
         // Tipos simples.
         return $"reader.{GetReadMethod(type)}()";
+    }
+
+    // ---------------------------------------------------------
+    // ARRAY READ EXPRESSIONS
+    // ---------------------------------------------------------
+
+    private static string GetArrayReadExpression(
+        IPropertySymbol property,
+        IArrayTypeSymbol arrayType)
+    {
+        var elementType = arrayType.ElementType;
+
+        // Determinar dimensión.
+        var isMultidimensional = arrayType.Rank > 1;
+
+        var methodName = isMultidimensional
+            ? "ReadMultyArray"
+            : "ReadArray";
+
+        // Arrays de tipos serializados.
+        if (IsSerializedType(elementType))
+        {
+            var rootType = GetTypeName(property.ContainingType);
+            var referenceType = GetTypeName(elementType);
+            var deserializerName = GetDeserializerName(elementType);
+
+            string expression;
+
+            if (elementType.IsReferenceType)
+            {
+                expression =
+                    $"reader.{methodName}<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
+            }
+            else
+            {
+                expression =
+                    $"reader.{methodName}<{rootType}, {referenceType}, {deserializerName}>()";
+            }
+
+            if (!isMultidimensional)
+                return expression;
+
+            return
+                $"({GetTypeName(arrayType)})({expression} ?? {GetEmptyArrayExpression(arrayType)})";
+        }
+
+        // Arrays de tipos simples.
+        var simpleExpression =
+            $"reader.{methodName}<{GetTypeName(elementType)}>()";
+
+        if (!isMultidimensional)
+            return simpleExpression;
+
+        return
+            $"({GetTypeName(arrayType)})({simpleExpression} ?? {GetEmptyArrayExpression(arrayType)})";
+    }
+
+    // ---------------------------------------------------------
+    // EMPTY MULTIDIMENSIONAL ARRAYS
+    // ---------------------------------------------------------
+
+    private static string GetEmptyArrayExpression(
+        IArrayTypeSymbol arrayType)
+    {
+        var elementType = GetTypeName(arrayType.ElementType);
+
+        var dimensions = string.Join(
+            ", ",
+            Enumerable.Repeat("0", arrayType.Rank));
+
+        return $"new {elementType}[{dimensions}]";
     }
 
     // ---------------------------------------------------------
@@ -495,7 +563,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         if (IsByteArray(type))
             return true;
 
-        // Arrays: T[]
+        // Arrays: T[], T[,], T[,,], etc.
         if (type is IArrayTypeSymbol arrayType)
             return IsSupported(arrayType.ElementType);
 
@@ -539,6 +607,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     private static bool IsByteArray(ITypeSymbol type)
     {
         return type is IArrayTypeSymbol arrayType &&
+               arrayType.Rank == 1 &&
                arrayType.ElementType.SpecialType == SpecialType.System_Byte;
     }
 
@@ -613,11 +682,13 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         if (IsSerializedReferenceType(type))
             return true;
 
+        // Arrays de cualquier dimensión.
         if (type is IArrayTypeSymbol arrayType)
-            return IsSerializedReferenceType(arrayType.ElementType);
+            return HasSerializedReferences(arrayType.ElementType);
 
+        // Colecciones.
         return IsEnumerableType(type, out var elementType) &&
-               IsSerializedReferenceType(elementType);
+               HasSerializedReferences(elementType);
     }
 
     // ---------------------------------------------------------
