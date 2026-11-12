@@ -28,16 +28,10 @@
 		<PackageReadmeFile>Readme.md</PackageReadmeFile>
 	</PropertyGroup>-->
 
-	<ItemGroup>
+	<!--<ItemGroup>
 		<None Include="Images\icon.png" Pack="true" PackagePath="\" />
 		<None Include="Docs\Readme.md" Pack="true" PackagePath="\" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<None Update="Props\Nivaes.Serializer.SourceGenerator.props"
-			  Pack="true"
-			  PackagePath="buildTransitive\" />
-	</ItemGroup>
+	</ItemGroup>-->
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers">

@@ -10,7 +10,6 @@
 		<Nullable>enable</Nullable>
 
 		<IsAotCompatible>true</IsAotCompatible>
-		<OptimizationPreference>Speed</OptimizationPreference>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -27,32 +26,27 @@
 	<ItemGroup>
 		<None Include="Images\icon.png" Pack="true" PackagePath="\" />
 		<None Include="Docs\Readme.md" Pack="true" PackagePath="\" />
+		<None Include="Pack\Nivaes.Serializer.props"
+			  Pack="true"
+			  PackagePath="buildTransitive\" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Nivaes.Serializer.SourceGenerator\Nivaes.Serializer.SourceGenerator.csproj">
-			<OutputItemType>Analyzer</OutputItemType>
-			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-			<PrivateAssets>runtime; build; native; contentfiles; buildtransitive</PrivateAssets>
-			<IncludeAssets>analyzers</IncludeAssets>
-			<ExcludeAssets>runtime; build; native; contentfiles; buildtransitive</ExcludeAssets>
-		</ProjectReference>
+		<ProjectReference Include="..\Nivaes.Serializer.SourceGenerator\Nivaes.Serializer.SourceGenerator.csproj"  
+						  OutputItemType="Analyzer"
+						  ReferenceOutputAssembly="false"
+						  PrivateAssets="all" />
 	</ItemGroup>
 
 	<Target Name="IncludeSourceGenerator" BeforeTargets="_GetPackageFiles">
 		<ItemGroup>
-			<None Include="$(MSBuildThisFileDirectory)..\Nivaes.Serializer.SourceGenerator\bin\$(Configuration)\netstandard2.0\Nivaes.Serializer.SourceGenerator.dll" 
-				  Pack="true" 
-				  PackagePath="analyzers/dotnet/cs/" 
-				  Visible="false" />
+			<None 
+				Include="$(MSBuildThisFileDirectory)..\Nivaes.Serializer.SourceGenerator\bin\$(Configuration)\netstandard2.0\Nivaes.Serializer.SourceGenerator.dll" 
+				Pack="true" 
+				PackagePath="analyzers/dotnet/cs/" 
+				Visible="false" />
 		</ItemGroup>
 	</Target>
-
-	<ItemGroup>
-		<None Include="buildTransitive\Nivaes.Serializer.SourceGenerator.props"
-			  Pack="true"
-			  PackagePath="buildTransitive\Nivaes.Serializer.SourceGenerator.props" />
-	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Update="SonarAnalyzer.CSharp">
