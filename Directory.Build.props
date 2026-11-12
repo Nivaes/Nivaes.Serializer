@@ -19,8 +19,7 @@
 	</PropertyGroup>
 
 	<PropertyGroup>
-		<!--<_CommonTargets>net10.0;net11.0</_CommonTargets>-->
-		<_CommonTargets>net10.0</_CommonTargets>
+		<_CommonTargets>net11.0</_CommonTargets>
 	</PropertyGroup>
 
 	<PropertyGroup>
