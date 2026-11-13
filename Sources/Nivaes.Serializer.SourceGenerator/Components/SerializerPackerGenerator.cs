@@ -1,7 +1,7 @@
-﻿
-using System;
+﻿using System;
 using System.Linq;
 using System.Text;
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -18,20 +18,56 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         var types = context.SyntaxProvider.ForAttributeWithMetadataName(
             fullyQualifiedMetadataName: AttributeMetadataName,
             predicate: static (node, _) => node is TypeDeclarationSyntax,
-            transform: static (context, _) =>
-                (INamedTypeSymbol)context.TargetSymbol);
+            transform: static (attributeContext, _) =>
+            {
+                var symbol = (INamedTypeSymbol)attributeContext.TargetSymbol;
+                var declaration = (TypeDeclarationSyntax)attributeContext.TargetNode;
+
+                var unionCases = ImmutableArray.CreateBuilder<ITypeSymbol>();
+
+                // Obtener las variantes desde:
+                // union UnionModel(Type1Model, Type2Model, Type3Model);
+                if (declaration.ParameterList is not null)
+                {
+                    foreach (var parameter in declaration.ParameterList.Parameters)
+                    {
+                        if (parameter.Type is null)
+                            continue;
+
+                        var caseType = attributeContext.SemanticModel
+                            .GetTypeInfo(parameter.Type)
+                            .Type;
+
+                        if (caseType is not null)
+                            unionCases.Add(caseType);
+                    }
+                }
+
+                return (
+                    Symbol: symbol,
+                    UnionCases: unionCases.ToImmutable()
+                );
+            });
 
         context.RegisterSourceOutput(
             types,
-            static (productionContext, symbol) =>
+            static (productionContext, data) =>
             {
-                Generate(productionContext, symbol);
+                Generate(
+                    productionContext,
+                    data.Symbol,
+                    data.UnionCases);
             });
     }
 
+    // ---------------------------------------------------------
+    // GENERATE
+    // ---------------------------------------------------------
+
     private static void Generate(
         SourceProductionContext context,
-        INamedTypeSymbol symbol)
+        INamedTypeSymbol symbol,
+        ImmutableArray<ITypeSymbol> unionCases)
     {
         // Esta versión no contempla tipos genéricos ni anidados.
         if (symbol.IsGenericType)
@@ -40,31 +76,31 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         if (symbol.TypeKind is not (TypeKind.Class or TypeKind.Struct))
             return;
 
-        var properties = symbol.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(p =>
-                !p.IsStatic &&
-                !p.IsIndexer &&
-                p.GetMethod is not null &&
-                p.SetMethod is not null &&
-                p.GetMethod.DeclaredAccessibility == Accessibility.Public &&
-                p.SetMethod.DeclaredAccessibility == Accessibility.Public)
-            .OrderBy(p => p.Locations
-                .FirstOrDefault(l => l.IsInSource)?
-                .SourceSpan.Start ?? int.MaxValue)
-            .ToArray();
+        // -----------------------------------------------------
+        // UNION
+        // -----------------------------------------------------
+#pragma warning disable RSEXPERIMENTAL006 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+        if (symbol.IsUnion)
+        {
+            if (unionCases.IsDefaultOrEmpty)
+                return;
+
+            GenerateUnion(context, symbol, unionCases);
+            return;
+        }
+#pragma warning restore RSEXPERIMENTAL006 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+
+        // -----------------------------------------------------
+        // CLASS / STRUCT NORMAL
+        // -----------------------------------------------------
+
+        var properties = GetProperties(symbol);
 
         foreach (var property in properties)
         {
             if (!IsSupported(property.Type))
             {
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        DiagnosticDescriptors.UnsupportedProperty,
-                        property.Locations.FirstOrDefault(),
-                        property.Name,
-                        property.Type.ToDisplayString()));
-
+                ReportUnsupportedProperty(context, property);
                 return;
             }
         }
@@ -84,15 +120,105 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     }
 
     // ---------------------------------------------------------
-    // SERIALIZER
+    // PROPERTIES
     // ---------------------------------------------------------
 
-    private static string GenerateSerializer(
+    private static IPropertySymbol[] GetProperties(
+        INamedTypeSymbol symbol)
+    {
+        return symbol.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p =>
+                !p.IsStatic &&
+                !p.IsIndexer &&
+                p.GetMethod is not null &&
+                p.SetMethod is not null &&
+                p.GetMethod.DeclaredAccessibility == Accessibility.Public &&
+                p.SetMethod.DeclaredAccessibility == Accessibility.Public)
+            .OrderBy(p => p.Locations
+                .FirstOrDefault(l => l.IsInSource)?
+                .SourceSpan.Start ?? int.MaxValue)
+            .ToArray();
+    }
+
+    private static void ReportUnsupportedProperty(
+        SourceProductionContext context,
+        IPropertySymbol property)
+    {
+        context.ReportDiagnostic(
+            Diagnostic.Create(
+                DiagnosticDescriptors.UnsupportedProperty,
+                property.Locations.FirstOrDefault(),
+                property.Name,
+                property.Type.ToDisplayString()));
+    }
+
+    // ---------------------------------------------------------
+    // UNION GENERATION
+    // ---------------------------------------------------------
+
+    private static void GenerateUnion(
+        SourceProductionContext context,
         INamedTypeSymbol symbol,
-        IPropertySymbol[] properties)
+        ImmutableArray<ITypeSymbol> cases)
+    {
+        var caseProperties = new IPropertySymbol[cases.Length][];
+
+        for (var i = 0; i < cases.Length; i++)
+        {
+            if (cases[i] is not INamedTypeSymbol caseType ||
+                caseType.TypeKind is not (TypeKind.Class or TypeKind.Struct))
+            {
+                return;
+            }
+
+            caseProperties[i] = GetProperties(caseType);
+
+            foreach (var property in caseProperties[i])
+            {
+                if (!IsSupported(property.Type))
+                {
+                    ReportUnsupportedProperty(context, property);
+                    return;
+                }
+            }
+        }
+
+        var serializer = GenerateUnionSerializer(
+            symbol,
+            cases,
+            caseProperties);
+
+        var deserializer = GenerateUnionDeserializer(
+            symbol,
+            cases,
+            caseProperties);
+
+        var hintPrefix = GetHintPrefix(symbol);
+
+        context.AddSource(
+            $"{hintPrefix}Serializer.g.cs",
+            serializer);
+
+        context.AddSource(
+            $"{hintPrefix}Deserializer.g.cs",
+            deserializer);
+    }
+
+    // ---------------------------------------------------------
+    // UNION SERIALIZER
+    // ---------------------------------------------------------
+
+    private static string GenerateUnionSerializer(
+        INamedTypeSymbol symbol,
+        ImmutableArray<ITypeSymbol> cases,
+        IPropertySymbol[][] properties)
     {
         var typeName = GetTypeName(symbol);
-        var serializerName = SourceGenerationHelper.GetSerializerClassName(symbol);
+
+        var serializerName =
+            SourceGenerationHelper.GetSerializerClassName(symbol);
+
         var accessibility = GetAccessibility(symbol);
 
         var sb = new StringBuilder();
@@ -108,9 +234,297 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
         sb.AppendLine("{");
 
-        sb.AppendLine($"    void ISerializer<{typeName}>.Serialize(");
-        sb.AppendLine($"        scoped in {typeName} model,");
+        sb.AppendLine(
+            $"    void ISerializer<{typeName}>.Serialize(");
+
+        sb.AppendLine(
+            $"        scoped in {typeName} item,");
+
         sb.AppendLine("        ref PackerWriter writer)");
+
+        sb.AppendLine("    {");
+
+        sb.AppendLine("        switch (item)");
+        sb.AppendLine("        {");
+
+        for (var i = 0; i < cases.Length; i++)
+        {
+            var caseName = GetTypeName(cases[i]);
+            var variableName = $"case{i}";
+
+            sb.AppendLine(
+                $"            case {caseName} {variableName}:");
+
+            // Discriminador.
+            sb.AppendLine(
+                $"                writer.Write({i + 1});");
+
+            // Serializar propiedades.
+            foreach (var property in properties[i])
+            {
+                var expression = GetWriteExpression(
+                    property,
+                    variableName,
+                    "                ");
+
+                sb.AppendLine($"                {expression}");
+            }
+
+            sb.AppendLine("                break;");
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("            default:");
+
+        sb.AppendLine(
+            "                throw new global::System.InvalidOperationException(\"Invalid union case to serialize.\");");
+
+        sb.AppendLine("        }");
+
+        sb.AppendLine("    }");
+        sb.AppendLine("}");
+
+        AppendNamespaceEnd(sb, symbol);
+
+        return sb.ToString();
+    }
+
+    // ---------------------------------------------------------
+    // UNION DESERIALIZER
+    // ---------------------------------------------------------
+
+    private static string GenerateUnionDeserializer(
+        INamedTypeSymbol symbol,
+        ImmutableArray<ITypeSymbol> cases,
+        IPropertySymbol[][] properties)
+    {
+        var typeName = GetTypeName(symbol);
+
+        var deserializerName =
+            SourceGenerationHelper.GetDeserializerClassName(symbol);
+
+        var accessibility = GetAccessibility(symbol);
+
+        var sb = new StringBuilder();
+
+        sb.AppendLine("// <auto-generated/>");
+        sb.AppendLine("#nullable enable");
+        sb.AppendLine("using Nivaes.Serializer;");
+
+        AppendNamespaceStart(sb, symbol);
+
+        sb.AppendLine(
+            $"{accessibility} sealed class {deserializerName} : IDeserializer<{typeName}>");
+
+        sb.AppendLine("{");
+
+        // Almacenar la variante concreta mientras se resuelven referencias.
+        // object permite conservar cualquier variante sin convertirla a la unión.
+        sb.AppendLine("    private object? _value;");
+
+        sb.AppendLine();
+
+        sb.AppendLine(
+            $"    {typeName} IDeserializer<{typeName}>.Deserialize(");
+
+        sb.AppendLine("        ref PackerReader reader)");
+
+        sb.AppendLine("    {");
+
+        sb.AppendLine(
+            "        int idType = reader.ReadInt32();");
+
+        sb.AppendLine();
+
+        sb.AppendLine("        switch (idType)");
+        sb.AppendLine("        {");
+
+        for (var i = 0; i < cases.Length; i++)
+        {
+            var caseName = GetTypeName(cases[i]);
+
+            sb.AppendLine($"            case {i + 1}:");
+            sb.AppendLine("            {");
+
+            // -------------------------------------------------
+            // READ PROPERTIES
+            // -------------------------------------------------
+
+            for (var j = 0; j < properties[i].Length; j++)
+            {
+                var property = properties[i][j];
+
+                var variableName = $"__value{j}";
+
+                var readExpression = GetReadExpression(property);
+
+                sb.AppendLine(
+                    $"                var {variableName} = {readExpression};");
+            }
+
+            sb.AppendLine();
+
+            // -------------------------------------------------
+            // CREATE CASE
+            // -------------------------------------------------
+
+            sb.AppendLine(
+                $"                var value = new {caseName}");
+
+            sb.AppendLine("                {");
+
+            for (var j = 0; j < properties[i].Length; j++)
+            {
+                var property = properties[i][j];
+
+                sb.AppendLine(
+                    $"                    {property.Name} = __value{j}!,");
+            }
+
+            sb.AppendLine("                };");
+
+            sb.AppendLine();
+
+            // Guardar la variante concreta para los setters de referencias.
+            sb.AppendLine("                _value = value;");
+
+            // La conversión implícita a la unión se realiza una sola vez.
+            sb.AppendLine("                return value;");
+
+            sb.AppendLine("            }");
+            sb.AppendLine();
+        }
+
+        // -----------------------------------------------------
+        // INVALID DISCRIMINATOR
+        // -----------------------------------------------------
+
+        sb.AppendLine("            default:");
+
+        sb.AppendLine(
+            $"                throw new global::System.InvalidOperationException(\"Invalid id type to deserialize {symbol.Name}\");");
+
+        sb.AppendLine("        }");
+
+        sb.AppendLine("    }");
+
+        // -----------------------------------------------------
+        // REFERENCE SETTERS
+        // -----------------------------------------------------
+
+        GenerateUnionReferenceSetters(
+            sb,
+            cases,
+            properties);
+
+        sb.AppendLine("}");
+
+        AppendNamespaceEnd(sb, symbol);
+
+        return sb.ToString();
+    }
+
+    // ---------------------------------------------------------
+    // UNION REFERENCE SETTERS
+    // ---------------------------------------------------------
+
+    private static void GenerateUnionReferenceSetters(
+        StringBuilder sb,
+        ImmutableArray<ITypeSymbol> cases,
+        IPropertySymbol[][] properties)
+    {
+        var referenceProperties = properties
+            .SelectMany(p => p)
+            .Where(p =>
+                HasSerializedReferences(p.Type) &&
+                CanGenerateReferenceSetter(p))
+            .Select(p => p.Name)
+            .Distinct()
+            .ToArray();
+
+        foreach (var propertyName in referenceProperties)
+        {
+            sb.AppendLine();
+
+            sb.AppendLine(
+                $"    public void Reference{propertyName}(object reference)");
+
+            sb.AppendLine("    {");
+
+            sb.AppendLine("        switch (_value)");
+            sb.AppendLine("        {");
+
+            for (var i = 0; i < cases.Length; i++)
+            {
+                var property = properties[i]
+                    .FirstOrDefault(p => p.Name == propertyName);
+
+                if (property is null ||
+                    !HasSerializedReferences(property.Type) ||
+                    !CanGenerateReferenceSetter(property))
+                {
+                    continue;
+                }
+
+                var caseName = GetTypeName(cases[i]);
+
+                var propertyType = GetTypeName(property.Type);
+
+                sb.AppendLine(
+                    $"            case {caseName} item:");
+
+                sb.AppendLine(
+                    $"                item.{property.Name} = ({propertyType})reference;");
+
+                // Volver a almacenar la variante.
+                // Es necesario también para variantes struct.
+                sb.AppendLine("                _value = item;");
+
+                sb.AppendLine("                break;");
+            }
+
+            sb.AppendLine("        }");
+
+            sb.AppendLine("    }");
+        }
+    }
+
+    // ---------------------------------------------------------
+    // NORMAL SERIALIZER
+    // ---------------------------------------------------------
+
+    private static string GenerateSerializer(
+        INamedTypeSymbol symbol,
+        IPropertySymbol[] properties)
+    {
+        var typeName = GetTypeName(symbol);
+
+        var serializerName =
+            SourceGenerationHelper.GetSerializerClassName(symbol);
+
+        var accessibility = GetAccessibility(symbol);
+
+        var sb = new StringBuilder();
+
+        sb.AppendLine("// <auto-generated/>");
+        sb.AppendLine("#nullable enable");
+        sb.AppendLine("using Nivaes.Serializer;");
+
+        AppendNamespaceStart(sb, symbol);
+
+        sb.AppendLine(
+            $"{accessibility} sealed class {serializerName} : ISerializer<{typeName}>");
+
+        sb.AppendLine("{");
+
+        sb.AppendLine(
+            $"    void ISerializer<{typeName}>.Serialize(");
+
+        sb.AppendLine(
+            $"        scoped in {typeName} model,");
+
+        sb.AppendLine("        ref PackerWriter writer)");
+
         sb.AppendLine("    {");
 
         foreach (var property in properties)
@@ -129,7 +543,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     }
 
     // ---------------------------------------------------------
-    // DESERIALIZER
+    // NORMAL DESERIALIZER
     // ---------------------------------------------------------
 
     private static string GenerateDeserializer(
@@ -137,7 +551,10 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         IPropertySymbol[] properties)
     {
         var typeName = GetTypeName(symbol);
-        var deserializerName = SourceGenerationHelper.GetDeserializerClassName(symbol);
+
+        var deserializerName =
+            SourceGenerationHelper.GetDeserializerClassName(symbol);
+
         var accessibility = GetAccessibility(symbol);
 
         var sb = new StringBuilder();
@@ -165,12 +582,14 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             $"    {typeName} IDeserializer<{typeName}>.Deserialize(");
 
         sb.AppendLine("        ref PackerReader reader)");
+
         sb.AppendLine("    {");
 
-        // Leer todas las propiedades.
+        // Leer propiedades.
         for (var i = 0; i < properties.Length; i++)
         {
             var property = properties[i];
+
             var variableName = $"__value{i}";
 
             var readExpression = GetReadExpression(property);
@@ -181,8 +600,9 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
         sb.AppendLine();
 
-        // Crear el objeto.
+        // Crear objeto.
         sb.AppendLine($"        _value = new {typeName}");
+
         sb.AppendLine("        {");
 
         for (var i = 0; i < properties.Length; i++)
@@ -194,9 +614,11 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         }
 
         sb.AppendLine("        };");
+
         sb.AppendLine();
 
         sb.AppendLine("        return _value!;");
+
         sb.AppendLine("    }");
 
         // Generar setters para referencias diferidas.
@@ -205,7 +627,6 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             if (!HasSerializedReferences(property.Type))
                 continue;
 
-            // No generar Reference para propiedades init.
             if (!CanGenerateReferenceSetter(property))
                 continue;
 
@@ -246,25 +667,30 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     // PROPERTY WRITE EXPRESSIONS
     // ---------------------------------------------------------
 
-    private static string GetWriteExpression(IPropertySymbol property)
+    private static string GetWriteExpression(
+        IPropertySymbol property,
+        string modelName = "model",
+        string indent = "        ")
     {
         var type = property.Type;
-        var value = $"model.{property.Name}";
+
+        var value = $"{modelName}.{property.Name}";
 
         // Nullable<T> serializado.
         if (TryGetNullableUnderlyingType(type, out var nullableType) &&
             IsSerializedType(nullableType))
         {
             var typeName = GetTypeName(nullableType);
+
             var serializerName = GetSerializerName(nullableType);
 
             return
                 $"writer.Write({value}.HasValue);\n" +
-                $"        if ({value}.HasValue)\n" +
-                $"            writer.Write<{typeName}, {serializerName}>({value}.Value);";
+                $"{indent}if ({value}.HasValue)\n" +
+                $"{indent}    writer.Write<{typeName}, {serializerName}>({value}.Value);";
         }
 
-        // byte[] tiene tratamiento especial.
+        // byte[]
         if (IsByteArray(type))
             return $"writer.Write({value});";
 
@@ -273,12 +699,13 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         {
             var elementType = arrayType.ElementType;
 
-            // Array unidimensional: T[]
+            // T[]
             if (arrayType.Rank == 1)
             {
                 if (IsSerializedType(elementType))
                 {
                     var elementTypeName = GetTypeName(elementType);
+
                     var serializerName = GetSerializerName(elementType);
 
                     return
@@ -289,10 +716,11 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
                     $"writer.Write<{GetTypeName(elementType)}>({value});";
             }
 
-            // Array multidimensional: T[,], T[,,], etc.
+            // T[,], T[,,], etc.
             if (IsSerializedType(elementType))
             {
                 var elementTypeName = GetTypeName(elementType);
+
                 var serializerName = GetSerializerName(elementType);
 
                 return
@@ -309,6 +737,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             if (IsSerializedType(enumerableElement))
             {
                 var elementTypeName = GetTypeName(enumerableElement);
+
                 var serializerName = GetSerializerName(enumerableElement);
 
                 return
@@ -323,6 +752,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         if (IsSerializedType(type))
         {
             var referenceType = GetTypeName(type);
+
             var serializerName = GetSerializerName(type);
 
             return
@@ -333,6 +763,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         if (type.TypeKind == TypeKind.Enum)
         {
             var enumType = (INamedTypeSymbol)type;
+
             var underlyingType = GetTypeName(enumType.EnumUnderlyingType!);
 
             return
@@ -356,7 +787,9 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             IsSerializedType(nullableType))
         {
             var rootType = GetTypeName(property.ContainingType);
+
             var typeName = GetTypeName(nullableType);
+
             var deserializerName = GetDeserializerName(nullableType);
 
             return
@@ -365,7 +798,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
                 $" : ({GetTypeName(type)})null";
         }
 
-        // byte[] tiene tratamiento especial.
+        // byte[]
         if (IsByteArray(type))
             return "reader.ReadBytes()";
 
@@ -379,7 +812,9 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             if (IsSerializedType(enumerableElement))
             {
                 var rootType = GetTypeName(property.ContainingType);
+
                 var referenceType = GetTypeName(enumerableElement);
+
                 var deserializerName = GetDeserializerName(enumerableElement);
 
                 if (enumerableElement.IsReferenceType &&
@@ -401,7 +836,9 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         if (IsSerializedType(type))
         {
             var rootType = GetTypeName(property.ContainingType);
+
             var referenceType = GetTypeName(type);
+
             var deserializerName = GetDeserializerName(type);
 
             if (type.IsReferenceType &&
@@ -419,6 +856,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         if (type.TypeKind == TypeKind.Enum)
         {
             var enumType = (INamedTypeSymbol)type;
+
             var underlyingType = enumType.EnumUnderlyingType!;
 
             return
@@ -439,7 +877,6 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     {
         var elementType = arrayType.ElementType;
 
-        // Determinar dimensión.
         var isMultidimensional = arrayType.Rank > 1;
 
         var methodName = isMultidimensional
@@ -450,7 +887,9 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         if (IsSerializedType(elementType))
         {
             var rootType = GetTypeName(property.ContainingType);
+
             var referenceType = GetTypeName(elementType);
+
             var deserializerName = GetDeserializerName(elementType);
 
             string expression;
@@ -619,6 +1058,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         }
 
         underlyingType = null!;
+
         return false;
     }
 
@@ -669,6 +1109,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         }
 
         elementType = null!;
+
         return false;
     }
 

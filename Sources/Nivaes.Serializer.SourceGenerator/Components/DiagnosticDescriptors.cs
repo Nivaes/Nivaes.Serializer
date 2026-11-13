@@ -2,7 +2,7 @@
 
 namespace Nivaes.Serializer.SourceGenerator
 {
-    internal class DiagnosticDescriptors
+    internal static class DiagnosticDescriptors
     {
         public static readonly DiagnosticDescriptor UnsupportedProperty =
             new(
@@ -12,5 +12,14 @@ namespace Nivaes.Serializer.SourceGenerator
              category: "SerializePacker",
              DiagnosticSeverity.Error,
              isEnabledByDefault: true);
+
+        //public static bool IsUnion(this INamedTypeSymbol symbol)
+        //{
+        //    if (symbol == null) return false;
+
+        //    return symbol
+        //        .GetAttributes()
+        //        .Any(attr => attr.AttributeClass?.Name == "UnionAttribute");
+        //}
     }
 }
