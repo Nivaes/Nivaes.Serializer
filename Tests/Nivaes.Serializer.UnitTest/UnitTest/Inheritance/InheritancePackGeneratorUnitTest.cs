@@ -20,6 +20,9 @@ public class InheritancePackGeneratorUnitTest
     {
         public required string String1 { get; init; }
         public required uint? Int2 { get; set; }
+
+        [IgnoreSerialize]
+        public double? Double1 { get; set; }
     }
    
 
@@ -31,7 +34,8 @@ public class InheritancePackGeneratorUnitTest
             String1 = "String1",
             String2 = "String2",
             Int1 = 122332,
-            Int2 = 33332
+            Int2 = 33332,
+            Double1 = 2.33222
         };
         
         var cache = SerializePacker.Serialize(model);
@@ -48,6 +52,8 @@ public class InheritancePackGeneratorUnitTest
         copyModel.String2.ShouldBe(model.String2);
         copyModel.Int1.ShouldBe(model.Int1);
         copyModel.Int2.ShouldBe(model.Int2);
+        copyModel.Double1.ShouldBeNull();
+        copyModel.Double1.ShouldNotBe(model.Double1);
     }
 
 
@@ -59,7 +65,8 @@ public class InheritancePackGeneratorUnitTest
             String1 = null!,
             String2 = null!,
             Int1 = 0,
-            Int2 = null
+            Int2 = null,
+            Double1 = 2
         };
 
         var cache = SerializePacker.Serialize<SimpleModel>(model);
@@ -76,6 +83,8 @@ public class InheritancePackGeneratorUnitTest
         copyModel.String2.ShouldBe(model.String2);
         copyModel.Int1.ShouldBe(model.Int1);
         copyModel.Int2.ShouldBe(model.Int2);
+        copyModel.Double1.ShouldBeNull();
+        copyModel.Double1.ShouldNotBe(model.Double1);
     }
 
     [Fact]
@@ -86,7 +95,8 @@ public class InheritancePackGeneratorUnitTest
             String1 = string.Empty,
             String2 = string.Empty,
             Int1 = 0,
-            Int2 = null
+            Int2 = null,
+            Double1 = 0
         };
 
         var cache = SerializePacker.Serialize(model);
@@ -103,17 +113,20 @@ public class InheritancePackGeneratorUnitTest
         copyModel.String2.ShouldBe(model.String2);
         copyModel.Int1.ShouldBe(model.Int1);
         copyModel.Int2.ShouldBe(model.Int2);
+        copyModel.Double1.ShouldBeNull();
+        copyModel.Double1.ShouldNotBe(model.Double1);
     }
 
     [Theory, AutoData]
-    public void SerializerAutoDataTest1(string test1, string test2, int test3, uint? test4)
+    public void SerializerAutoDataTest1(string test1, string test2, int test3, uint? test4, double double1)
     {
         var model = new SimpleModel
         {
             String1 = test1,
             String2 = test2,
             Int1 = test3,
-            Int2 = test4
+            Int2 = test4,
+            Double1 = double1
         };
 
         var cache = SerializePacker.Serialize(model);
@@ -126,6 +139,8 @@ public class InheritancePackGeneratorUnitTest
         copyModel.String2.ShouldBe(model.String2);
         copyModel.Int1.ShouldBe(model.Int1);
         copyModel.Int2.ShouldBe(model.Int2);
+        copyModel.Double1.ShouldBeNull();
+        copyModel.Double1.ShouldNotBe(model.Double1);
     }
 
     [Theory, AutoData]
@@ -145,5 +160,7 @@ public class InheritancePackGeneratorUnitTest
         copyModel.String2.ShouldBe(model.String2);
         copyModel.Int1.ShouldBe(model.Int1);
         copyModel.Int2.ShouldBe(model.Int2);
+        copyModel.Double1.ShouldBeNull();
+        copyModel.Double1.ShouldNotBe(model.Double1);
     }
 }

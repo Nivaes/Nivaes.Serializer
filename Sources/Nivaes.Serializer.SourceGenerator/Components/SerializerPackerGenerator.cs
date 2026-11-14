@@ -14,6 +14,11 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     private const string AttributeMetadataName =
         "Nivaes.Serializer.SerializePackerAttribute";
 
+    private const string IgnoreSerializeAttributeMetadataName =
+        "Nivaes.Serializer.IgnoreSerializeAttribute";
+
+    
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var types = context.SyntaxProvider.ForAttributeWithMetadataName(
@@ -95,6 +100,9 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         // CLASS / STRUCT NORMAL
         // -----------------------------------------------------
 
+        if (!ValidateIgnoredRequiredMembers(context, symbol))
+            return;
+
         var properties = GetProperties(symbol);
 
         foreach (var property in properties)
@@ -147,6 +155,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             var declaredProperties = current.GetMembers()
                 .OfType<IPropertySymbol>()
                 .Where(p =>
+                    !HasIgnoreSerializeAttribute(p) &&
                     !p.IsStatic &&
                     !p.IsIndexer &&
                     p.GetMethod is not null &&
@@ -172,6 +181,49 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         }
 
         return properties.ToArray();
+    }
+
+    private static bool HasIgnoreSerializeAttribute(ISymbol symbol)
+    {
+        return symbol.GetAttributes().Any(attribute =>
+            attribute.AttributeClass?.ToDisplayString() ==
+            IgnoreSerializeAttributeMetadataName);
+    }
+
+    private static bool ValidateIgnoredRequiredMembers(
+        SourceProductionContext context,
+        INamedTypeSymbol symbol)
+    {
+        var isValid = true;
+
+        for (INamedTypeSymbol? current = symbol;
+             current is not null && current.SpecialType != SpecialType.System_Object;
+             current = current.BaseType)
+        {
+            foreach (var member in current.GetMembers())
+            {
+                var isRequired = member switch
+                {
+                    IPropertySymbol property => property.IsRequired,
+                    IFieldSymbol field => field.IsRequired,
+                    _ => false
+                };
+
+                if (!isRequired || !HasIgnoreSerializeAttribute(member))
+                    continue;
+
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        DiagnosticDescriptors.RequiredIgnoredMember,
+                        member.Locations.FirstOrDefault(location => location.IsInSource)
+                            ?? member.Locations.FirstOrDefault(),
+                        member.Name));
+
+                isValid = false;
+            }
+        }
+
+        return isValid;
     }
 
     private static void ReportUnsupportedProperty(
@@ -204,6 +256,9 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             {
                 return;
             }
+
+            if (!ValidateIgnoredRequiredMembers(context, caseType))
+                return;
 
             caseProperties[i] = GetProperties(caseType);
 

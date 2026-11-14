@@ -16,6 +16,9 @@ public class SimplePackGeneratorUnitTest
     {
         public required string String1 { get; set; }
         public required string String2 { get; set; }
+
+        [IgnoreSerialize]
+        public string? String3 { get; set; }
     }
 
     [Fact]   
@@ -25,6 +28,7 @@ public class SimplePackGeneratorUnitTest
         {
             String1 = "String1",
             String2 = "String2",
+            String3 = "String3"
         };
 
         var cache = SerializePacker.Serialize(model);
@@ -39,6 +43,7 @@ public class SimplePackGeneratorUnitTest
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
         copyModel.String2.ShouldBe(model.String2);
+        copyModel.String3.ShouldNotBe(model.String3);
     }
 
 
@@ -49,6 +54,7 @@ public class SimplePackGeneratorUnitTest
         {
             String1 = null!,
             String2 = null!,
+            String3 = "String3"
         };
 
         var cache = SerializePacker.Serialize(model);
@@ -72,6 +78,7 @@ public class SimplePackGeneratorUnitTest
         {
             String1 = string.Empty,
             String2 = string.Empty,
+            String3 = "String3"
         };
 
         var cache = SerializePacker.Serialize(model);
@@ -95,6 +102,7 @@ public class SimplePackGeneratorUnitTest
         {
             String1 = test1,
             String2 = test2,
+            String3 = "String3"
         };
 
         var cache = SerializePacker.Serialize(model);
@@ -131,6 +139,7 @@ public class SimplePackGeneratorUnitTest
         {
             String1 = "String1",
             String2 = "String2",
+            String3 = "String3"
         };
 
         var copyModel = SerializePacker.Clone(model);
