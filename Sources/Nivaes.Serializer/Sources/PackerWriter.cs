@@ -34,7 +34,7 @@ public ref partial struct PackerWriter
     #endregion
 
     public PackerWriter()
-    { 
+    {
         _buffer = GC.AllocateUninitializedArray<byte>(InitialCapacity);
         _span = _buffer;
         _firstPosition = 0;
@@ -109,9 +109,33 @@ public ref partial struct PackerWriter
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(byte? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Ensure(1);
+
+            _span[_position++] = value.Value;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write(bool value)
     {
         Write(value ? (byte)1 : (byte)0);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(bool? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Write(value.Value);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -127,6 +151,23 @@ public ref partial struct PackerWriter
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(short? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Ensure(2);
+
+            BinaryPrimitives.WriteInt16LittleEndian(
+                _span[_position..],
+                value.Value);
+
+            _position += 2;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write(ushort value)
     {
         Ensure(2);
@@ -136,6 +177,23 @@ public ref partial struct PackerWriter
             value);
 
         _position += 2;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(ushort? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Ensure(2);
+
+            BinaryPrimitives.WriteUInt16LittleEndian(
+                _span[_position..],
+                value.Value);
+
+            _position += 2;
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -179,6 +237,23 @@ public ref partial struct PackerWriter
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(uint? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Ensure(4);
+
+            BinaryPrimitives.WriteUInt32LittleEndian(
+                _span[_position..],
+                value.Value);
+
+            _position += 4;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write(long value)
     {
         Ensure(8);
@@ -188,6 +263,23 @@ public ref partial struct PackerWriter
             value);
 
         _position += 8;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(long? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Ensure(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(
+                _span[_position..],
+                value.Value);
+
+            _position += 8;
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -203,15 +295,54 @@ public ref partial struct PackerWriter
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(ulong? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Ensure(8);
+
+            BinaryPrimitives.WriteUInt64LittleEndian(
+                _span[_position..],
+                value.Value);
+
+            _position += 8;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write(float value)
     {
         Write(BitConverter.SingleToInt32Bits(value));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(float? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Write(BitConverter.SingleToInt32Bits(value.Value));
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write(double value)
     {
         Write(BitConverter.DoubleToInt64Bits(value));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(double? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Write(BitConverter.DoubleToInt64Bits(value.Value));
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -230,9 +361,40 @@ public ref partial struct PackerWriter
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(decimal? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Ensure(16);
+
+            Span<int> bits = stackalloc int[4];
+
+            decimal.GetBits(value.Value, bits);
+
+            MemoryMarshal.AsBytes(bits)
+                .CopyTo(_span[_position..]);
+
+            _position += 16;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write(Half value)
     {
         Write(BitConverter.HalfToUInt16Bits(value));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(Half? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Write(BitConverter.HalfToUInt16Bits(value.Value));
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -246,10 +408,37 @@ public ref partial struct PackerWriter
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(Guid? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Ensure(16);
+
+            value.Value.TryWriteBytes(_span[_position..]);
+
+            _position += 16;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write(DateTime value)
     {
         Write(value.Ticks);
         Write((byte)value.Kind);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(DateTime? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Write(value.Value.Ticks);
+            Write((byte)value.Value.Kind);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -260,6 +449,18 @@ public ref partial struct PackerWriter
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(DateTimeOffset? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Write(value.Value.Ticks);
+            Write((short)value.Value.Offset.TotalMinutes);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write(string? value)
     {
         if (value is null)
@@ -267,7 +468,7 @@ public ref partial struct PackerWriter
             Write(-1);
             return;
         }
-        if(string.IsNullOrEmpty(value))
+        if (string.IsNullOrEmpty(value))
         {
             Write(-2);
             return;
@@ -322,7 +523,7 @@ public ref partial struct PackerWriter
         memory.Span.CopyTo(_span[_position..]);
 
         _position += memory.Length;
-    }    
+    }
     #endregion
 
     #region Reference writers

@@ -42,8 +42,30 @@ public ref struct PackerReader
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public byte? ReadNullableByte()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
+        return ReadSpan(1)[0];
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ReadBoolean()
     {
+        return ReadByte() != 0;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool? ReadNullableBoolean()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
         return ReadByte() != 0;
     }
 
@@ -56,8 +78,35 @@ public ref struct PackerReader
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public short? ReadNullableInt16()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
+        var span = ReadSpan(2);
+
+        return BinaryPrimitives.ReadInt16LittleEndian(span);
+    }
+
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ushort ReadUInt16()
     {
+        var span = ReadSpan(2);
+
+        return BinaryPrimitives.ReadUInt16LittleEndian(span);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ushort? ReadNullableUInt16()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
         var span = ReadSpan(2);
 
         return BinaryPrimitives.ReadUInt16LittleEndian(span);
@@ -93,8 +142,34 @@ public ref struct PackerReader
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public uint? ReadNullableUInt32()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
+        var span = ReadSpan(4);
+
+        return BinaryPrimitives.ReadUInt32LittleEndian(span);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public long ReadInt64()
     {
+        var span = ReadSpan(8);
+
+        return BinaryPrimitives.ReadInt64LittleEndian(span);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public long? ReadNullableInt64()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
         var span = ReadSpan(8);
 
         return BinaryPrimitives.ReadInt64LittleEndian(span);
@@ -109,8 +184,32 @@ public ref struct PackerReader
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ulong? ReadNullableUInt64()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
+        var span = ReadSpan(8);
+
+        return BinaryPrimitives.ReadUInt64LittleEndian(span);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public float ReadSingle()
     {
+        return BitConverter.Int32BitsToSingle(ReadInt32());
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public float? ReadNullableSingle()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
         return BitConverter.Int32BitsToSingle(ReadInt32());
     }
 
@@ -120,6 +219,16 @@ public ref struct PackerReader
         return BitConverter.Int64BitsToDouble(ReadInt64());
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public double? ReadNullableDouble()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
+        return BitConverter.Int64BitsToDouble(ReadInt64());
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Half ReadHalf()
@@ -128,8 +237,38 @@ public ref struct PackerReader
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Half? ReadNullableHalf()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
+        return BitConverter.UInt16BitsToHalf(ReadUInt16());
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public decimal ReadDecimal()
     {
+        Span<int> bits = stackalloc int[4];
+
+        _spanBuffer
+            .Slice(_position, 16)
+            .CopyTo(MemoryMarshal.AsBytes(bits));
+
+        _position += 16;
+
+        return new decimal(bits);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public decimal? ReadNullableDecimal()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
         Span<int> bits = stackalloc int[4];
 
         _spanBuffer
@@ -150,6 +289,19 @@ public ref struct PackerReader
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Guid? ReadNullableGuid()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
+        var span = ReadSpan(16);
+
+        return new Guid(span);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public DateTime ReadDateTime()
     {
         long ticks = ReadInt64();
@@ -159,8 +311,38 @@ public ref struct PackerReader
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public DateTime? ReadNullableDateTime()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
+        long ticks = ReadInt64();
+        var kind = (DateTimeKind)ReadByte();
+
+        return new DateTime(ticks, kind);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public DateTimeOffset ReadDateTimeOffset()
     {
+        long ticks = ReadInt64();
+        short offsetMinutes = ReadInt16();
+
+        return new DateTimeOffset(
+            ticks,
+            TimeSpan.FromMinutes(offsetMinutes));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public DateTimeOffset? ReadNullableDateTimeOffset()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
         long ticks = ReadInt64();
         short offsetMinutes = ReadInt16();
 
@@ -185,12 +367,52 @@ public ref struct PackerReader
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public byte[]? ReadBytes()
+    public string? ReadNullableString()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
+        int byteCount = ReadInt32();
+
+        if (byteCount == -1)
+            return null!;
+        if (byteCount < -1)
+            return string.Empty;
+
+        var span = ReadSpan(byteCount);
+
+        return Encoding.UTF8.GetString(span);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public byte[] ReadBytes()
     {
         int length = ReadInt32();
 
         if (length < 0)
-            return null;
+            return [];
+
+        var result = GC.AllocateUninitializedArray<byte>(length);
+
+        ReadSpan(length).CopyTo(result);
+
+        return result;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public byte[]? ReadNullableBytes()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
+        int length = ReadInt32();
+
+        if (length < 0)
+            return null!;
 
         var result = GC.AllocateUninitializedArray<byte>(length);
 
@@ -202,6 +424,26 @@ public ref struct PackerReader
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Memory<byte> ReadMemory()
     {
+        int length = ReadInt32();
+
+        if (length < 0)
+            return null;
+
+        var result = GC.AllocateUninitializedArray<byte>(length);
+
+        ReadSpan(length).CopyTo(result);
+
+        return result.AsMemory();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Memory<byte>? ReadNullableMemory()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
         int length = ReadInt32();
 
         if (length < 0)

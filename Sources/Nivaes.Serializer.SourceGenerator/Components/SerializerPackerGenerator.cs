@@ -802,7 +802,8 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         // Nullable<T>.
         if (TryGetNullableUnderlyingType(type, out var nullableType))
         {
-            // Nullable de tipos serializados.
+            // Los tipos serializados conservan el tratamiento de referencias
+            // y referencias circulares.
             if (IsSerializedType(nullableType))
             {
                 var rootType = GetTypeName(property.ContainingType);
@@ -815,23 +816,20 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
                     $" : ({GetTypeName(type)})null";
             }
 
-            // Nullable de enumeraciones.
-            if (nullableType.TypeKind == TypeKind.Enum)
-            {
-                var enumType = (INamedTypeSymbol)nullableType;
-                var underlyingType = enumType.EnumUnderlyingType!;
-                var readMethod = GetReadMethod(underlyingType);
-
-                return
-                    $"reader.ReadBoolean() " +
-                    $"? ({GetTypeName(type)})reader.{readMethod}() " +
-                    $" : ({GetTypeName(type)})null";
-            }
-
-            // Nullable de tipos simples: ReadNullableInt32(), etc.
+            // Los demás tipos utilizan ReadNullable{Type}.
+            // Para enums se utiliza el tipo subyacente:
+            // MyEnum : int -> ReadNullableInt32().
             var nullableReadMethod = GetNullableReadMethod(nullableType);
 
-            return $"reader.{nullableReadMethod}()";
+            if (nullableReadMethod is null)
+                return $"default({GetTypeName(type)})!";
+
+            var expression = $"reader.{nullableReadMethod}()";
+
+            if (nullableType.TypeKind == TypeKind.Enum)
+                return $"({GetTypeName(type)})({expression})";
+
+            return expression;
         }
 
         // byte[]
@@ -1025,11 +1023,22 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
     private static string? GetNullableReadMethod(ITypeSymbol type)
     {
+        // Los enums utilizan el método nullable de su tipo subyacente.
+        // Ejemplo: enum MyEnum : short -> ReadNullableInt16().
+        if (type.TypeKind == TypeKind.Enum &&
+            type is INamedTypeSymbol enumType)
+        {
+            type = enumType.EnumUnderlyingType!;
+        }
+
         var readMethod = GetReadMethod(type);
 
         if (readMethod is null)
             return null;
 
+        // ReadInt32 -> ReadNullableInt32
+        // ReadGuid  -> ReadNullableGuid
+        // ReadDateTime -> ReadNullableDateTime
         return $"ReadNullable{readMethod.Substring("Read".Length)}";
     }
 
@@ -1038,18 +1047,13 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         // Nullable<T>.
         if (TryGetNullableUnderlyingType(type, out var underlyingType))
         {
-            // Nullable de tipos serializados.
+            // Los tipos serializados mantienen el tratamiento especial
+            // mediante presencia + ReadReference.
             if (IsSerializedType(underlyingType))
                 return true;
 
-            // Nullable de enumeraciones: se usa su tipo subyacente.
-            if (underlyingType.TypeKind == TypeKind.Enum)
-            {
-                var enumType = (INamedTypeSymbol)underlyingType;
-                return GetReadMethod(enumType.EnumUnderlyingType!) is not null;
-            }
-
-            // Para los demás nullable debe existir ReadNullable<T>.
+            // Para cualquier otro nullable debe existir el método
+            // ReadNullable correspondiente. En enums se usa el tipo subyacente.
             return IsSupported(underlyingType) &&
                    GetNullableReadMethod(underlyingType) is not null;
         }
