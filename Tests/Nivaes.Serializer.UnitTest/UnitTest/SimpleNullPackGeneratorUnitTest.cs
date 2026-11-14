@@ -105,4 +105,21 @@ public class SimpleNullPackGeneratorUnitTest
         copyModel.Int1.ShouldBe(model.Int1);
         copyModel.Int2.ShouldBe(model.Int2);
     }
+
+    [Theory, AutoData]
+    public void SerializerAutoDataTest2(SimpleNullModel model)
+    {
+        var cache = SerializePacker.Serialize(model);
+        cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
+
+        _output.WriteLine(
+            string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
+        );
+
+        var copyModel = SerializePacker.Deserialize<SimpleNullModel>(cache);
+
+        copyModel.ShouldNotBeNull();
+        copyModel.Int1.ShouldBe(model.Int1);
+        copyModel.Int2.ShouldBe(model.Int2);
+    }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Collections.Immutable;
@@ -7,7 +8,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Nivaes.Serializer.SourceGenerator;
 
-[Generator]
+[Generator(LanguageNames.CSharp)]
 public sealed class SerializerPackerGenerator : IIncrementalGenerator
 {
     private const string AttributeMetadataName =
@@ -126,19 +127,51 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     private static IPropertySymbol[] GetProperties(
         INamedTypeSymbol symbol)
     {
-        return symbol.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(p =>
-                !p.IsStatic &&
-                !p.IsIndexer &&
-                p.GetMethod is not null &&
-                p.SetMethod is not null &&
-                p.GetMethod.DeclaredAccessibility == Accessibility.Public &&
-                p.SetMethod.DeclaredAccessibility == Accessibility.Public)
-            .OrderBy(p => p.Locations
-                .FirstOrDefault(l => l.IsInSource)?
-                .SourceSpan.Start ?? int.MaxValue)
-            .ToArray();
+        // Recorrer la jerarquía desde la clase base hasta el tipo derivado.
+        // Así las propiedades heredadas mantienen un orden determinista.
+        var hierarchy = new Stack<INamedTypeSymbol>();
+
+        for (INamedTypeSymbol? current = symbol;
+             current is not null && current.SpecialType != SpecialType.System_Object;
+             current = current.BaseType)
+        {
+            hierarchy.Push(current);
+        }
+
+        var properties = new List<IPropertySymbol>();
+
+        while (hierarchy.Count > 0)
+        {
+            var current = hierarchy.Pop();
+
+            var declaredProperties = current.GetMembers()
+                .OfType<IPropertySymbol>()
+                .Where(p =>
+                    !p.IsStatic &&
+                    !p.IsIndexer &&
+                    p.GetMethod is not null &&
+                    p.SetMethod is not null &&
+                    p.GetMethod.DeclaredAccessibility == Accessibility.Public &&
+                    p.SetMethod.DeclaredAccessibility == Accessibility.Public)
+                .OrderBy(p => p.Locations
+                    .FirstOrDefault(l => l.IsInSource)?
+                    .SourceSpan.Start ?? int.MaxValue);
+
+            foreach (var property in declaredProperties)
+            {
+                // Si una propiedad derivada sobrescribe u oculta una propiedad
+                // de la base con el mismo nombre, conservar la más derivada.
+                var existingIndex = properties.FindIndex(
+                    p => p.Name == property.Name);
+
+                if (existingIndex >= 0)
+                    properties.RemoveAt(existingIndex);
+
+                properties.Add(property);
+            }
+        }
+
+        return properties.ToArray();
     }
 
     private static void ReportUnsupportedProperty(
@@ -356,7 +389,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
                 var variableName = $"__value{j}";
 
-                var readExpression = GetReadExpression(property);
+                var readExpression = GetReadExpression(property, (INamedTypeSymbol)cases[i]);
 
                 sb.AppendLine(
                     $"                var {variableName} = {readExpression};");
@@ -592,7 +625,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
             var variableName = $"__value{i}";
 
-            var readExpression = GetReadExpression(property);
+            var readExpression = GetReadExpression(property, symbol);
 
             sb.AppendLine(
                 $"        var {variableName} = {readExpression};");
@@ -795,9 +828,12 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     // PROPERTY READ EXPRESSIONS
     // ---------------------------------------------------------
 
-    private static string GetReadExpression(IPropertySymbol property)
+    private static string GetReadExpression(
+        IPropertySymbol property,
+        INamedTypeSymbol rootType)
     {
         var type = property.Type;
+        var rootTypeName = GetTypeName(rootType);
 
         // Nullable<T>.
         if (TryGetNullableUnderlyingType(type, out var nullableType))
@@ -806,13 +842,12 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             // y referencias circulares.
             if (IsSerializedType(nullableType))
             {
-                var rootType = GetTypeName(property.ContainingType);
                 var typeName = GetTypeName(nullableType);
                 var deserializerName = GetDeserializerName(nullableType);
 
                 return
                     $"reader.ReadBoolean() " +
-                    $"? reader.ReadReference<{rootType}, {typeName}, {deserializerName}>() " +
+                    $"? reader.ReadReference<{rootTypeName}, {typeName}, {deserializerName}>() " +
                     $" : ({GetTypeName(type)})null";
             }
 
@@ -838,15 +873,13 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
         // Arrays.
         if (type is IArrayTypeSymbol arrayType)
-            return GetArrayReadExpression(property, arrayType);
+            return GetArrayReadExpression(property, arrayType, rootTypeName);
 
         // IEnumerable<T>, List<T>, ICollection<T>, etc.
         if (IsEnumerableType(type, out var enumerableElement))
         {
             if (IsSerializedType(enumerableElement))
             {
-                var rootType = GetTypeName(property.ContainingType);
-
                 var referenceType = GetTypeName(enumerableElement);
 
                 var deserializerName = GetDeserializerName(enumerableElement);
@@ -855,11 +888,11 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
                     CanGenerateReferenceSetter(property))
                 {
                     return
-                        $"reader.ReadEnumerable<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
+                        $"reader.ReadEnumerable<{rootTypeName}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
                 }
 
                 return
-                    $"reader.ReadEnumerable<{rootType}, {referenceType}, {deserializerName}>()";
+                    $"reader.ReadEnumerable<{rootTypeName}, {referenceType}, {deserializerName}>()";
             }
 
             return
@@ -869,8 +902,6 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         // Clases y structs serializados.
         if (IsSerializedType(type))
         {
-            var rootType = GetTypeName(property.ContainingType);
-
             var referenceType = GetTypeName(type);
 
             var deserializerName = GetDeserializerName(type);
@@ -879,11 +910,11 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
                 CanGenerateReferenceSetter(property))
             {
                 return
-                    $"reader.ReadReference<{rootType}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
+                    $"reader.ReadReference<{rootTypeName}, {referenceType}, {deserializerName}>(Reference{property.Name}!)";
             }
 
             return
-                $"reader.ReadReference<{rootType}, {referenceType}, {deserializerName}>()";
+                $"reader.ReadReference<{rootTypeName}, {referenceType}, {deserializerName}>()";
         }
 
         // Enumeraciones.
@@ -907,7 +938,8 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
     private static string GetArrayReadExpression(
         IPropertySymbol property,
-        IArrayTypeSymbol arrayType)
+        IArrayTypeSymbol arrayType,
+        string rootTypeName)
     {
         var elementType = arrayType.ElementType;
 
@@ -920,7 +952,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         // Arrays de tipos serializados.
         if (IsSerializedType(elementType))
         {
-            var rootType = GetTypeName(property.ContainingType);
+            var rootType = rootTypeName;
 
             var referenceType = GetTypeName(elementType);
 
