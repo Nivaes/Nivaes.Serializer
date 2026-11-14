@@ -12,7 +12,7 @@ public class MultyArray3TypesPackGeneratorUnitTest
 
     }
 
-    [SerializePacker]
+    [SerializeModel]
     public class SimpleModel
     {
         public required string String1 { get; set; }
@@ -20,7 +20,7 @@ public class MultyArray3TypesPackGeneratorUnitTest
     }
 
 
-    [SerializePacker]
+    [SerializeModel]
     public class CollectionsTypesModel
     {
         public required SimpleModel[,,] array { get; set; }
@@ -144,14 +144,14 @@ public class MultyArray3TypesPackGeneratorUnitTest
             }
         };
 
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializeModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializePacker.Deserialize<CollectionsTypesModel>(cache);
+        var copyModel = SerializeModel.Deserialize<CollectionsTypesModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.array.ShouldNotBeNull();

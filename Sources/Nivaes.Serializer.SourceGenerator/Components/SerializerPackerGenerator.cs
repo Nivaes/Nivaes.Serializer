@@ -10,19 +10,11 @@ namespace Nivaes.Serializer.SourceGenerator;
 
 [Generator(LanguageNames.CSharp)]
 public sealed class SerializerPackerGenerator : IIncrementalGenerator
-{
-    private const string AttributeMetadataName =
-        "Nivaes.Serializer.SerializePackerAttribute";
-
-    private const string IgnoreSerializeAttributeMetadataName =
-        "Nivaes.Serializer.IgnoreSerializeAttribute";
-
-    
-
+{  
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var types = context.SyntaxProvider.ForAttributeWithMetadataName(
-            fullyQualifiedMetadataName: AttributeMetadataName,
+            fullyQualifiedMetadataName: MetadataNameDescriptors.SerializeAttribute,
             predicate: static (node, _) => node is TypeDeclarationSyntax,
             transform: static (attributeContext, _) =>
             {
@@ -187,7 +179,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     {
         return symbol.GetAttributes().Any(attribute =>
             attribute.AttributeClass?.ToDisplayString() ==
-            IgnoreSerializeAttributeMetadataName);
+            MetadataNameDescriptors.SerializeIgnoreAttribut);
     }
 
     private static bool ValidateIgnoredRequiredMembers(
@@ -1254,7 +1246,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
         return namedType.GetAttributes().Any(attribute =>
             attribute.AttributeClass?.ToDisplayString() ==
-            AttributeMetadataName);
+            MetadataNameDescriptors.SerializeAttribute);
     }
 
     // Solo las clases serializadas tienen identidad de referencia.

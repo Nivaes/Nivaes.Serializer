@@ -12,7 +12,7 @@ public class CreateStructSerializeTest
         using System;
         using Nivaes.Serializer;
 
-        [SerializePacker]
+        [SerializeModel]
         public class RootModel
         {
             public required string String1 { get; set; }
@@ -20,7 +20,7 @@ public class CreateStructSerializeTest
             public required ReferenceStructModel Reference { get; set; }
         }
 
-        [SerializePacker]
+        [SerializeModel]
         public struct ReferenceStructModel
         {
             public required string String1 { get; set; }
@@ -79,7 +79,7 @@ public class CreateStructSerializeTest
         using System;
         using Nivaes.Serializer;
 
-        [SerializePacker]
+        [SerializeModel]
         public class RootModel
         {
             public required string String1 { get; set; }
@@ -87,7 +87,7 @@ public class CreateStructSerializeTest
             public required ReferenceStructModel Reference { get; set; }
         }
 
-        [SerializePacker]
+        [SerializeModel]
         public record struct ReferenceStructModel
         {
             public required string String1 { get; set; }
@@ -146,7 +146,7 @@ public class CreateStructSerializeTest
         using System;
         using Nivaes.Serializer;
 
-        [SerializePacker]
+        [SerializeModel]
         public class RootModel
         {
             public required string String1 { get; set; }
@@ -154,7 +154,7 @@ public class CreateStructSerializeTest
             public ReferenceStructModel? Reference { get; set; }
         }
 
-        [SerializePacker]
+        [SerializeModel]
         public record struct ReferenceStructModel
         {
             public required string String1 { get; set; }
@@ -217,7 +217,7 @@ public class CreateStructSerializeTest
 
         references.Add(
             MetadataReference.CreateFromFile(
-                typeof(SerializePackerAttribute).Assembly.Location));
+                typeof(SerializeModelAttribute).Assembly.Location));
 
         return CSharpCompilation.Create(
             "GeneratorTests",

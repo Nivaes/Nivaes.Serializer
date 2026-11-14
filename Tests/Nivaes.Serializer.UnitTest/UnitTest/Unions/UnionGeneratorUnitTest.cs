@@ -28,7 +28,7 @@ public class UnionGeneratorUnitTest
         public required double Double2 { get; set; }
     }
 
-    [SerializePacker]
+    [SerializeModel]
     public union UnionModel(Type1Model, Type2Model, Type3Model);
 
     [Fact]
@@ -40,14 +40,14 @@ public class UnionGeneratorUnitTest
             String2 = "String2"
         };
 
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializeModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
            string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
        );
 
-        var copyModel = SerializePacker.Deserialize<UnionModel>(cache);
+        var copyModel = SerializeModel.Deserialize<UnionModel>(cache);
 
         copyModel.Value.ShouldBeOfType<Type1Model>();
         var copyType1 = (Type1Model)copyModel.Value;
@@ -65,14 +65,14 @@ public class UnionGeneratorUnitTest
             String1 = "String1"
         };
 
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializeModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
            string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
        );
 
-        var copyModel = SerializePacker.Deserialize<UnionModel>(cache);
+        var copyModel = SerializeModel.Deserialize<UnionModel>(cache);
 
         //copyModel.ShouldNotBeNull();
         copyModel.Value.ShouldBeOfType<Type2Model>();

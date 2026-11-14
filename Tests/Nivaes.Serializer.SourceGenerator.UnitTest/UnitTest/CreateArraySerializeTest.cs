@@ -12,7 +12,7 @@ public class CreateArraySerialize
         using System;
         using Nivaes.Serializer;
 
-        [SerializePacker]
+        [SerializeModel]
         public class SimpleModel 
         {
             public required Guid Guid1 { get; set; }
@@ -20,7 +20,7 @@ public class CreateArraySerialize
             public required string String2 { get; set; }
         }
 
-        [SerializePacker]
+        [SerializeModel]
         public class CollectionsTypesModel
         {
             public required SimpleModel[] array { get; set; }
@@ -82,7 +82,7 @@ public class CreateArraySerialize
 
         references.Add(
             MetadataReference.CreateFromFile(
-                typeof(SerializePackerAttribute).Assembly.Location));
+                typeof(SerializeModelAttribute).Assembly.Location));
 
         return CSharpCompilation.Create(
             "GeneratorTests",

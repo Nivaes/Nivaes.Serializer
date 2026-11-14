@@ -90,14 +90,14 @@ public class ReferenceStructUnitTest
             }
         };
 
-        var cache = SerializePacker.Serialize<RootModel, RootModelTestSerializer>(model);
+        var cache = SerializeModel.Serialize<RootModel, RootModelTestSerializer>(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializePacker.Deserialize<RootModel, RootModelTestDeserializer>(cache);
+        var copyModel = SerializeModel.Deserialize<RootModel, RootModelTestDeserializer>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -121,14 +121,14 @@ public class ReferenceStructUnitTest
             }
         };
 
-        var cache = SerializePacker.Serialize<RootModel, RootModelTestSerializer>(model);
+        var cache = SerializeModel.Serialize<RootModel, RootModelTestSerializer>(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializePacker.Deserialize<RootModel, RootModelTestDeserializer>(cache);
+        var copyModel = SerializeModel.Deserialize<RootModel, RootModelTestDeserializer>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -152,14 +152,14 @@ public class ReferenceStructUnitTest
             }
         };
 
-        var cache = SerializePacker.Serialize<RootModel, RootModelTestSerializer>(model);
+        var cache = SerializeModel.Serialize<RootModel, RootModelTestSerializer>(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializePacker.Deserialize<RootModel, RootModelTestDeserializer>(cache);
+        var copyModel = SerializeModel.Deserialize<RootModel, RootModelTestDeserializer>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -183,14 +183,14 @@ public class ReferenceStructUnitTest
             }
         };
 
-        var cache = SerializePacker.Serialize<RootModel, RootModelTestSerializer>(model);
+        var cache = SerializeModel.Serialize<RootModel, RootModelTestSerializer>(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializePacker.Deserialize<RootModel, RootModelTestDeserializer>(cache);
+        var copyModel = SerializeModel.Deserialize<RootModel, RootModelTestDeserializer>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);

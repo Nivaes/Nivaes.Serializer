@@ -9,7 +9,7 @@ public class CircularReferenceGenerationUnitTest
         _output = output;
     }
 
-    [SerializePacker]
+    [SerializeModel]
     public class RootModel
     {
         public required string String1 { get; set; }
@@ -19,7 +19,7 @@ public class CircularReferenceGenerationUnitTest
         public required ReferenceModel Reference2 { get; set; }
     }
 
-    [SerializePacker]
+    [SerializeModel]
     public class ReferenceModel
     {
         public required string String1 { get; set; }
@@ -49,10 +49,10 @@ public class CircularReferenceGenerationUnitTest
         model.Reference1.RootReference = model;
         model.Reference2.RootReference = model;
 
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializeModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializePacker.Deserialize<RootModel>(cache);
+        var copyModel = SerializeModel.Deserialize<RootModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -86,10 +86,10 @@ public class CircularReferenceGenerationUnitTest
         model.Reference1.RootReference = model;
         model.Reference2.RootReference = model;
 
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializeModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializePacker.Deserialize<RootModel>(cache);
+        var copyModel = SerializeModel.Deserialize<RootModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -127,10 +127,10 @@ public class CircularReferenceGenerationUnitTest
         model.Reference1.RootReference = model;
         model.Reference2.RootReference = model;
 
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializeModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializePacker.Deserialize<RootModel>(cache);
+        var copyModel = SerializeModel.Deserialize<RootModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -167,10 +167,10 @@ public class CircularReferenceGenerationUnitTest
         model.Reference1.RootReference = model;
         model.Reference2.RootReference = model;
 
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializeModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializePacker.Deserialize<RootModel>(cache);
+        var copyModel = SerializeModel.Deserialize<RootModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);

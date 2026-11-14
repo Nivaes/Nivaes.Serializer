@@ -13,11 +13,11 @@ namespace Nivaes.Serializer.SourceGenerator
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true);
 
-        public static readonly DiagnosticDescriptor MissingSerializePackerAttribute =
+        public static readonly DiagnosticDescriptor MissingSerializeModelAttribute =
             new(
                 id: "NVS002",
-                title: "Missing SerializePackerAttribute",
-                messageFormat: "The type '{0}' must be marked with [SerializePacker] to use Serialize, Deserialize or Clone.",
+                title: "Missing SerializeModelAttribute",
+                messageFormat: "The type '{0}' must be marked with [SerializeModel] to use Serialize, Deserialize or Clone.",
                 category: "Nivaes.Serializer",
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true);
@@ -26,7 +26,7 @@ namespace Nivaes.Serializer.SourceGenerator
             new(
                 id: "NVS003",
                 title: "Required member cannot be ignored",
-                messageFormat: "The required member '{0}' cannot have the [IgnoreSerialize] attribute.",
+                messageFormat: "The required member '{0}' cannot have the [SerializeIgnore] attribute.",
                 category: "Nivaes.Serializer",
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true);

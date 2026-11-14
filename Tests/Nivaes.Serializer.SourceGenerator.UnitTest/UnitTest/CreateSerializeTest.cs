@@ -12,7 +12,7 @@ public class CreateSerialize
         using System;
         using Nivaes.Serializer;
 
-        [SerializePacker]
+        [SerializeModel]
         public class SimpleModel 
         {
             public required Guid Guid1 { get; set; }
@@ -72,7 +72,7 @@ public class CreateSerialize
         using System;
         using Nivaes.Serializer;
 
-        [SerializePacker]
+        [SerializeModel]
         public class SimpleModel 
         {
             public required Memory<byte> Memory { get; set; }
@@ -130,7 +130,7 @@ public class CreateSerialize
         using System;
         using Nivaes.Serializer;
 
-        [SerializePacker]
+        [SerializeModel]
         public class SimpleModel 
         {
             public required Guid Guid1 { get; set; }
@@ -194,7 +194,7 @@ public class CreateSerialize
 
         references.Add(
             MetadataReference.CreateFromFile(
-                typeof(SerializePackerAttribute).Assembly.Location));
+                typeof(SerializeModelAttribute).Assembly.Location));
 
         return CSharpCompilation.Create(
             "GeneratorTests",

@@ -1,6 +1,6 @@
 ﻿namespace Nivaes.Serializer.Benchmark.SimplePack;
 
-[SerializePacker]
+[SerializeModel]
 public class CircularReferencePackerModel
 {
     public required string String1 { get; set; }
@@ -9,7 +9,7 @@ public class CircularReferencePackerModel
     public CircularRootPackerModel? Reference { get; set; }
 }
 
-[SerializePacker]
+[SerializeModel]
 public class CircularRootPackerModel
 {
     public required string String1 { get; set; }

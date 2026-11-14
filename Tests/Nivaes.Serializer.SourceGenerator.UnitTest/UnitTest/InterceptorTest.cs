@@ -17,7 +17,7 @@ public class Interceptor
         using System;
         using Nivaes.Serializer;
 
-        [SerializePacker]
+        [SerializeModel]
         public class SimpleModel 
         {
             public required Guid Guid1 { get; set; }
@@ -36,8 +36,8 @@ public class Interceptor
                     String2 = ""World""
                 };
 
-                var cache = SerializePacker.Serialize(model);
-                var copyModel = SerializePacker.Deserialize<SimpleModel>(cache);
+                var cache = SerializeModel.Serialize(model);
+                var copyModel = SerializeModel.Deserialize<SimpleModel>(cache);
             }
         }
         ";
@@ -113,7 +113,7 @@ public class Interceptor
 
         references.Add(
             MetadataReference.CreateFromFile(
-                typeof(SerializePackerAttribute).Assembly.Location));
+                typeof(SerializeModelAttribute).Assembly.Location));
 
         return CSharpCompilation.Create(
             "GeneratorTests",

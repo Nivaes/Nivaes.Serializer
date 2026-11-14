@@ -56,7 +56,7 @@ public class PackBenchmarks
             Int1 = 42
         };
 
-        return SerializePacker.Serialize(model).ToArray();
+        return SerializeModel.Serialize(model).ToArray();
     }
 
     [Benchmark]
@@ -70,7 +70,7 @@ public class PackBenchmarks
     [Benchmark]
     public SimpleNivaesSerializeModel? NivaesDeserialize()
     {
-        return SerializePacker.Deserialize<SimpleNivaesSerializeModel>(_nivaesPackSerialize);
+        return SerializeModel.Deserialize<SimpleNivaesSerializeModel>(_nivaesPackSerialize);
     }
 
     private byte[] PrepareMemoryPackSerialize()
@@ -113,7 +113,7 @@ public class PackBenchmarks
             }
         };
 
-        return SerializePacker.Serialize(model).ToArray();
+        return SerializeModel.Serialize(model).ToArray();
     }
 
     [Benchmark]
@@ -125,7 +125,7 @@ public class PackBenchmarks
     [Benchmark]
     public RootPackerModel? NivaesReferenceDeserialize()
     {
-        return SerializePacker.Deserialize<RootPackerModel>(_nivaesPackReferenceSerialize);
+        return SerializeModel.Deserialize<RootPackerModel>(_nivaesPackReferenceSerialize);
     }
 
     private byte[] PrepareReferenceMemoryPackSerialize()
@@ -174,7 +174,7 @@ public class PackBenchmarks
 
         model.Reference.Reference = model;
 
-        return SerializePacker.Serialize(model).ToArray();
+        return SerializeModel.Serialize(model).ToArray();
     }
 
     [Benchmark]
@@ -186,7 +186,7 @@ public class PackBenchmarks
     [Benchmark]
     public CircularRootPackerModel? NivaesCircularReferenceDeserialize()
     {
-        return SerializePacker.Deserialize<CircularRootPackerModel>(_nivaesPackCircularReferenceSerialize);
+        return SerializeModel.Deserialize<CircularRootPackerModel>(_nivaesPackCircularReferenceSerialize);
     }
 
     //private byte[] PrepareCircularReferenceMemoryPackSerialize()

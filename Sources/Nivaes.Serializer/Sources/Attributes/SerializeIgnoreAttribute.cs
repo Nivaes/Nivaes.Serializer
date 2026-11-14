@@ -1,6 +1,6 @@
 ﻿namespace Nivaes.Serializer;
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-public class IgnoreSerializeAttribute : Attribute
+public class SerializeIgnoreAttribute : Attribute
 {
 }
