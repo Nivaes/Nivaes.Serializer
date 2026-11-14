@@ -72,6 +72,19 @@ public ref struct PackerReader
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int? ReadNullableInt32()
+    {
+        var hasValue = ReadBoolean();
+
+        if (!hasValue)
+            return default;
+
+        var span = ReadSpan(4);
+
+        return BinaryPrimitives.ReadInt32LittleEndian(span);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public uint ReadUInt32()
     {
         var span = ReadSpan(4);

@@ -676,18 +676,35 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
 
         var value = $"{modelName}.{property.Name}";
 
-        // Nullable<T> serializado.
-        if (TryGetNullableUnderlyingType(type, out var nullableType) &&
-            IsSerializedType(nullableType))
+        // Nullable<T>.
+        if (TryGetNullableUnderlyingType(type, out var nullableType))
         {
-            var typeName = GetTypeName(nullableType);
+            // Nullable de tipos serializados.
+            if (IsSerializedType(nullableType))
+            {
+                var typeName = GetTypeName(nullableType);
+                var serializerName = GetSerializerName(nullableType);
 
-            var serializerName = GetSerializerName(nullableType);
+                return
+                    $"writer.Write({value}.HasValue);\n" +
+                    $"{indent}if ({value}.HasValue)\n" +
+                    $"{indent}    writer.Write<{typeName}, {serializerName}>({value}.Value);";
+            }
 
-            return
-                $"writer.Write({value}.HasValue);\n" +
-                $"{indent}if ({value}.HasValue)\n" +
-                $"{indent}    writer.Write<{typeName}, {serializerName}>({value}.Value);";
+            // Nullable<T> enum: escribir presencia y valor subyacente.
+            if (nullableType.TypeKind == TypeKind.Enum)
+            {
+                var enumType = (INamedTypeSymbol)nullableType;
+                var underlyingType = GetTypeName(enumType.EnumUnderlyingType!);
+
+                return
+                    $"writer.Write({value}.HasValue);\n" +
+                    $"{indent}if ({value}.HasValue)\n" +
+                    $"{indent}    writer.Write(({underlyingType}){value}.Value);";
+            }
+
+            // Nullable de tipos simples: PackerWriter.Write(T?).
+            return $"writer.Write({value});";
         }
 
         // byte[]
@@ -782,20 +799,39 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     {
         var type = property.Type;
 
-        // Nullable<T> serializado.
-        if (TryGetNullableUnderlyingType(type, out var nullableType) &&
-            IsSerializedType(nullableType))
+        // Nullable<T>.
+        if (TryGetNullableUnderlyingType(type, out var nullableType))
         {
-            var rootType = GetTypeName(property.ContainingType);
+            // Nullable de tipos serializados.
+            if (IsSerializedType(nullableType))
+            {
+                var rootType = GetTypeName(property.ContainingType);
+                var typeName = GetTypeName(nullableType);
+                var deserializerName = GetDeserializerName(nullableType);
 
-            var typeName = GetTypeName(nullableType);
+                return
+                    $"reader.ReadBoolean() " +
+                    $"? reader.ReadReference<{rootType}, {typeName}, {deserializerName}>() " +
+                    $" : ({GetTypeName(type)})null";
+            }
 
-            var deserializerName = GetDeserializerName(nullableType);
+            // Nullable de enumeraciones.
+            if (nullableType.TypeKind == TypeKind.Enum)
+            {
+                var enumType = (INamedTypeSymbol)nullableType;
+                var underlyingType = enumType.EnumUnderlyingType!;
+                var readMethod = GetReadMethod(underlyingType);
 
-            return
-                $"reader.ReadBoolean() " +
-                $"? reader.ReadReference<{rootType}, {typeName}, {deserializerName}>() " +
-                $" : ({GetTypeName(type)})null";
+                return
+                    $"reader.ReadBoolean() " +
+                    $"? ({GetTypeName(type)})reader.{readMethod}() " +
+                    $" : ({GetTypeName(type)})null";
+            }
+
+            // Nullable de tipos simples: ReadNullableInt32(), etc.
+            var nullableReadMethod = GetNullableReadMethod(nullableType);
+
+            return $"reader.{nullableReadMethod}()";
         }
 
         // byte[]
@@ -944,7 +980,7 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
     // READ METHOD
     // ---------------------------------------------------------
 
-    private static string GetReadMethod(ITypeSymbol type)
+    private static string? GetReadMethod(ITypeSymbol type)
     {
         if (type.ToDisplayString() == "System.Guid")
             return "ReadGuid";
@@ -983,38 +1019,40 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
             SpecialType.System_Double => "ReadDouble",
             SpecialType.System_Decimal => "ReadDecimal",
 
-            _ => throw new NotSupportedException(
-                $"Unsupported SpecialType: {type}")
+            _ => null
         };
     }
 
-    // ---------------------------------------------------------
-    // TYPE HELPERS
-    // ---------------------------------------------------------
+    private static string? GetNullableReadMethod(ITypeSymbol type)
+    {
+        var readMethod = GetReadMethod(type);
+
+        if (readMethod is null)
+            return null;
+
+        return $"ReadNullable{readMethod.Substring("Read".Length)}";
+    }
 
     private static bool IsSupported(ITypeSymbol type)
     {
         // Nullable<T>.
         if (TryGetNullableUnderlyingType(type, out var underlyingType))
-            return IsSupported(underlyingType);
+        {
+            // Nullable de tipos serializados.
+            if (IsSerializedType(underlyingType))
+                return true;
 
-        if (type.SpecialType is
-            SpecialType.System_String or
-            SpecialType.System_Array or
-            SpecialType.System_Char or
-            SpecialType.System_Boolean or
-            SpecialType.System_Byte or
-            SpecialType.System_SByte or
-            SpecialType.System_Int16 or
-            SpecialType.System_UInt16 or
-            SpecialType.System_Int32 or
-            SpecialType.System_UInt32 or
-            SpecialType.System_Int64 or
-            SpecialType.System_UInt64 or
-            SpecialType.System_Single or
-            SpecialType.System_Double or
-            SpecialType.System_Decimal)
-            return true;
+            // Nullable de enumeraciones: se usa su tipo subyacente.
+            if (underlyingType.TypeKind == TypeKind.Enum)
+            {
+                var enumType = (INamedTypeSymbol)underlyingType;
+                return GetReadMethod(enumType.EnumUnderlyingType!) is not null;
+            }
+
+            // Para los demás nullable debe existir ReadNullable<T>.
+            return IsSupported(underlyingType) &&
+                   GetNullableReadMethod(underlyingType) is not null;
+        }
 
         // byte[]
         if (IsByteArray(type))
@@ -1028,21 +1066,19 @@ public sealed class SerializerPackerGenerator : IIncrementalGenerator
         if (IsEnumerableType(type, out var elementType))
             return IsSupported(elementType);
 
-        var typeName = type.ToDisplayString(
-            SymbolDisplayFormat.FullyQualifiedFormat);
-
-        if (typeName is
-            "global::System.Guid" or
-            "global::System.Half" or
-            "global::System.Memory<byte>" or
-            "global::System.DateTime" or
-            "global::System.DateTimeOffset")
-            return true;
-
+        // Enumeraciones.
         if (type.TypeKind == TypeKind.Enum)
+        {
+            var enumType = (INamedTypeSymbol)type;
+            return GetReadMethod(enumType.EnumUnderlyingType!) is not null;
+        }
+
+        // Clases y estructuras con serializador generado.
+        if (IsSerializedType(type))
             return true;
 
-        return IsSerializedType(type);
+        // Tipos simples y tipos especiales implementados.
+        return GetReadMethod(type) is not null;
     }
 
     private static bool TryGetNullableUnderlyingType(

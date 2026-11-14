@@ -150,6 +150,22 @@ public ref partial struct PackerWriter
         _position += 4;
     }
 
+    public void Write(int? value)
+    {
+        Write(value.HasValue);
+
+        if (value.HasValue)
+        {
+            Ensure(4);
+
+            BinaryPrimitives.WriteInt32LittleEndian(
+                _span[_position..],
+                value.Value);
+
+            _position += 4;
+        }
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Write(uint value)
     {
