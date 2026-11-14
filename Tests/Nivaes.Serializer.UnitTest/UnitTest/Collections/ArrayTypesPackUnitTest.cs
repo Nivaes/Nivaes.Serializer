@@ -99,14 +99,14 @@ public class ArrayTypesPackUnitTest
             }
         };
 
-        var cache = SerializeModel.Serialize<CollectionsTypesModel, CollectionsTypesModelSerializer>(model);
+        var cache = SerializerModel.Serialize<CollectionsTypesModel, CollectionsTypesModelSerializer>(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializeModel.Deserialize<CollectionsTypesModel, CollectionsTypesModelDeserializer>(cache);
+        var copyModel = SerializerModel.Deserialize<CollectionsTypesModel, CollectionsTypesModelDeserializer>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.array.ShouldNotBeNull();

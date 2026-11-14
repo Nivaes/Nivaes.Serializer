@@ -2,7 +2,7 @@
 
 namespace Nivaes.Serializer;
 
-public static partial class SerializeModel
+public static partial class SerializerModel
 {
     public static ReadOnlySpan<byte> Serialize<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(in T model)
     {

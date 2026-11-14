@@ -49,10 +49,10 @@ public class CircularReferenceGenerationUnitTest
         model.Reference1.RootReference = model;
         model.Reference2.RootReference = model;
 
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializeModel.Deserialize<RootModel>(cache);
+        var copyModel = SerializerModel.Deserialize<RootModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -86,10 +86,10 @@ public class CircularReferenceGenerationUnitTest
         model.Reference1.RootReference = model;
         model.Reference2.RootReference = model;
 
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializeModel.Deserialize<RootModel>(cache);
+        var copyModel = SerializerModel.Deserialize<RootModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -127,10 +127,10 @@ public class CircularReferenceGenerationUnitTest
         model.Reference1.RootReference = model;
         model.Reference2.RootReference = model;
 
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializeModel.Deserialize<RootModel>(cache);
+        var copyModel = SerializerModel.Deserialize<RootModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -167,10 +167,10 @@ public class CircularReferenceGenerationUnitTest
         model.Reference1.RootReference = model;
         model.Reference2.RootReference = model;
 
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializeModel.Deserialize<RootModel>(cache);
+        var copyModel = SerializerModel.Deserialize<RootModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);

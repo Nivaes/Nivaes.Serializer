@@ -70,14 +70,14 @@ public class MultyArray2TypesPackGeneratorUnitTest
             }
         };
 
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializeModel.Deserialize<CollectionsTypesModel>(cache);
+        var copyModel = SerializerModel.Deserialize<CollectionsTypesModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.array.ShouldNotBeNull();

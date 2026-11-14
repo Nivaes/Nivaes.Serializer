@@ -112,14 +112,14 @@ public class UnionUnitTest
             String2 = "String2"
         };
 
-        var cache = SerializeModel.Serialize<UnionModel, UnionModelSerializerTest>(model);
+        var cache = SerializerModel.Serialize<UnionModel, UnionModelSerializerTest>(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
            string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
        );
 
-        var copyModel = SerializeModel.Deserialize<UnionModel, UnionModelDeserializerTest>(cache);
+        var copyModel = SerializerModel.Deserialize<UnionModel, UnionModelDeserializerTest>(cache);
 
         copyModel.Value.ShouldBeOfType<Type1Model>();
         var copyType1 = (Type1Model)copyModel.Value;
@@ -137,14 +137,14 @@ public class UnionUnitTest
             String1 = "String1"
         };
 
-        var cache = SerializeModel.Serialize<UnionModel, UnionModelSerializerTest>(model);
+        var cache = SerializerModel.Serialize<UnionModel, UnionModelSerializerTest>(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
            string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
        );
 
-        var copyModel = SerializeModel.Deserialize<UnionModel, UnionModelDeserializerTest>(cache);
+        var copyModel = SerializerModel.Deserialize<UnionModel, UnionModelDeserializerTest>(cache);
 
         //copyModel.ShouldNotBeNull();
         copyModel.Value.ShouldBeOfType<Type2Model>();

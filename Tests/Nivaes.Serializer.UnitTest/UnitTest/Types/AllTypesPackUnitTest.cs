@@ -218,14 +218,14 @@ public class AllTypesPackUnitTest
             DateTimeOffset2 = DateTimeOffset.Now.AddSeconds(223934),
         };
 
-        var cache = SerializeModel.Serialize<AllTypesModel, AllTypesModelSerializerTest>(model);
+        var cache = SerializerModel.Serialize<AllTypesModel, AllTypesModelSerializerTest>(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializeModel.Deserialize<AllTypesModel, AllTypesModelDeserializerTest>(cache);
+        var copyModel = SerializerModel.Deserialize<AllTypesModel, AllTypesModelDeserializerTest>(cache);
 
         copyModel.ShouldNotBeNull();
 
@@ -326,14 +326,14 @@ public class AllTypesPackUnitTest
             DateTimeOffset2 = DateTimeOffset.MaxValue,
         };
 
-        var cache = SerializeModel.Serialize<AllTypesModel, AllTypesModelSerializerTest>(model);
+        var cache = SerializerModel.Serialize<AllTypesModel, AllTypesModelSerializerTest>(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
            string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
        );
 
-        var copyModel = SerializeModel.Deserialize<AllTypesModel, AllTypesModelDeserializerTest>(cache);
+        var copyModel = SerializerModel.Deserialize<AllTypesModel, AllTypesModelDeserializerTest>(cache);
 
         copyModel.ShouldNotBeNull();
 
@@ -385,10 +385,10 @@ public class AllTypesPackUnitTest
     [Theory, AutoData]
     public void SerializerAllDataTest2(AllTypesModel model)
     {
-        var cache = SerializeModel.Serialize<AllTypesModel, AllTypesModelSerializerTest>(model);
+        var cache = SerializerModel.Serialize<AllTypesModel, AllTypesModelSerializerTest>(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializeModel.Deserialize<AllTypesModel, AllTypesModelDeserializerTest>(cache);
+        var copyModel = SerializerModel.Deserialize<AllTypesModel, AllTypesModelDeserializerTest>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.Byte1.ShouldBe(model.Byte1);

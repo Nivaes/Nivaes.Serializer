@@ -120,14 +120,14 @@ public class AllTypesPackGeneratorUnitTest
             DateTimeOffset2 = DateTimeOffset.Now.AddSeconds(223934),
         };
 
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializeModel.Deserialize<AllTypesModel>(cache);
+        var copyModel = SerializerModel.Deserialize<AllTypesModel>(cache);
 
         copyModel.ShouldNotBeNull();
 
@@ -234,14 +234,14 @@ public class AllTypesPackGeneratorUnitTest
             DateTimeOffset2 = DateTimeOffset.MaxValue,
         };
 
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
            string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
        );
 
-        var copyModel = SerializeModel.Deserialize<AllTypesModel>(cache);
+        var copyModel = SerializerModel.Deserialize<AllTypesModel>(cache);
 
         copyModel.ShouldNotBeNull();
 
@@ -296,10 +296,10 @@ public class AllTypesPackGeneratorUnitTest
     [Theory, AutoData]
     public void SerializerAllDataTest2(AllTypesModel model)
     {
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializeModel.Deserialize<AllTypesModel>(cache);
+        var copyModel = SerializerModel.Deserialize<AllTypesModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.Byte1.ShouldBe(model.Byte1);

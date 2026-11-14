@@ -36,8 +36,8 @@ public class Interceptor
                     String2 = ""World""
                 };
 
-                var cache = SerializeModel.Serialize(model);
-                var copyModel = SerializeModel.Deserialize<SimpleModel>(cache);
+                var cache = SerializerModel.Serialize(model);
+                var copyModel = SerializerModel.Deserialize<SimpleModel>(cache);
             }
         }
         ";

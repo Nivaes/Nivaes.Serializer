@@ -230,7 +230,7 @@ public sealed class SerializerInterceptorGenerator : IIncrementalGenerator
                 source.AppendLine("        {");
 
                 var methodCall =
-                    $"global::Nivaes.Serializer.SerializeModel.{item.MethodName}<{genericArguments}>({item.Arguments})";
+                    $"global::Nivaes.Serializer.SerializerModel.{item.MethodName}<{genericArguments}>({item.Arguments})";
 
                 if (item.ReturnsVoid)
                 {
@@ -251,7 +251,7 @@ public sealed class SerializerInterceptorGenerator : IIncrementalGenerator
             source.AppendLine("}");
 
             spc.AddSource(
-                "SerializeModelInterceptors.g.cs",
+                "SerializerModelInterceptors.g.cs",
                 source.ToString());
         });
     }

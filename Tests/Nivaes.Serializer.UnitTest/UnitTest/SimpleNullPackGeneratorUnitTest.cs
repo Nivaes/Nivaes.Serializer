@@ -27,14 +27,14 @@ public class SimpleNullPackGeneratorUnitTest
             Int2 = null,
         };
         
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializeModel.Deserialize<SimpleNullModel>(cache);
+        var copyModel = SerializerModel.Deserialize<SimpleNullModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.Int1.ShouldBe(model.Int1);
@@ -50,14 +50,14 @@ public class SimpleNullPackGeneratorUnitTest
             Int2 = null!,
         };
 
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializeModel.Deserialize<SimpleNullModel>(cache);
+        var copyModel = SerializerModel.Deserialize<SimpleNullModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.Int1.ShouldBe(model.Int1);
@@ -72,14 +72,14 @@ public class SimpleNullPackGeneratorUnitTest
             Int1 = 222,
         };
 
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializeModel.Deserialize<SimpleNullModel>(cache);
+        var copyModel = SerializerModel.Deserialize<SimpleNullModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.Int1.ShouldBe(model.Int1);
@@ -96,10 +96,10 @@ public class SimpleNullPackGeneratorUnitTest
             Int2 = test2,
         };
 
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializeModel.Deserialize<SimpleNullModel>(cache);
+        var copyModel = SerializerModel.Deserialize<SimpleNullModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.Int1.ShouldBe(model.Int1);
@@ -109,14 +109,14 @@ public class SimpleNullPackGeneratorUnitTest
     [Theory, AutoData]
     public void SerializerAutoDataTest2(SimpleNullModel model)
     {
-        var cache = SerializeModel.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializeModel.Deserialize<SimpleNullModel>(cache);
+        var copyModel = SerializerModel.Deserialize<SimpleNullModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.Int1.ShouldBe(model.Int1);
