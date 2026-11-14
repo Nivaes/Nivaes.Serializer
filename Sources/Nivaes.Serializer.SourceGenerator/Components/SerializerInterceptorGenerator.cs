@@ -1,7 +1,4 @@
-﻿
-using System;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -11,7 +8,11 @@ namespace Nivaes.Serializer.SourceGenerator;
 [Generator(LanguageNames.CSharp)]
 public sealed class SerializerInterceptorGenerator : IIncrementalGenerator
 {
-    private const string TargetType = "Nivaes.Serializer.SerializePacker";
+    private const string TargetType =
+        "Nivaes.Serializer.SerializePacker";
+
+    private const string SerializePackerAttribute =
+        "Nivaes.Serializer.SerializePackerAttribute";
 
     private sealed class InterceptInfo
     {
@@ -26,6 +27,9 @@ public sealed class SerializerInterceptorGenerator : IIncrementalGenerator
         public string Arguments { get; }
         public bool ReturnsVoid { get; }
 
+        public bool HasSerializePackerAttribute { get; }
+        public Location DiagnosticLocation { get; }
+
         public InterceptInfo(
             int version,
             string locationData,
@@ -36,7 +40,9 @@ public sealed class SerializerInterceptorGenerator : IIncrementalGenerator
             string returnType,
             string parameters,
             string arguments,
-            bool returnsVoid)
+            bool returnsVoid,
+            bool hasSerializePackerAttribute,
+            Location diagnosticLocation)
         {
             Version = version;
             LocationData = locationData;
@@ -48,6 +54,9 @@ public sealed class SerializerInterceptorGenerator : IIncrementalGenerator
             Parameters = parameters;
             Arguments = arguments;
             ReturnsVoid = returnsVoid;
+
+            HasSerializePackerAttribute = hasSerializePackerAttribute;
+            DiagnosticLocation = diagnosticLocation;
         }
     }
 
@@ -98,6 +107,13 @@ public sealed class SerializerInterceptorGenerator : IIncrementalGenerator
 
                 var modelType = model.ToDisplayString(
                     NullableFormat);
+
+                // Comprobar si el tipo tiene aplicado SerializePackerAttribute.
+                var hasSerializePackerAttribute = model
+                    .GetAttributes()
+                    .Any(attribute =>
+                        attribute.AttributeClass?.ToDisplayString() ==
+                        SerializePackerAttribute);
 
                 // Obtener los nombres de las clases auxiliares.
                 var serializerClassName = model.GetSerializerClassName();
@@ -155,7 +171,9 @@ public sealed class SerializerInterceptorGenerator : IIncrementalGenerator
                     returnType,
                     parameters,
                     arguments,
-                    symbol.ReturnsVoid);
+                    symbol.ReturnsVoid,
+                    hasSerializePackerAttribute,
+                    invocation.GetLocation());
             })
             .Where(static x => x is not null)
             .Collect();
@@ -182,6 +200,19 @@ public sealed class SerializerInterceptorGenerator : IIncrementalGenerator
             {
                 if (item is null)
                     continue;
+
+                // Si el tipo no tiene SerializePackerAttribute,
+                // generar un error de compilación y omitir el interceptor.
+                if (!item.HasSerializePackerAttribute)
+                {
+                    spc.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.MissingSerializePackerAttribute,
+                            item.DiagnosticLocation,
+                            item.ModelType));
+
+                    continue;
+                }
 
                 var locationData = SymbolDisplay.FormatLiteral(
                     item.LocationData,
