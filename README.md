@@ -60,3 +60,8 @@ public class Account
 Los tipos de las propiedades deben ser compatibles con el generador. Los tipos genéricos y anidados anotados no se generan actualmente.
 
 
+## Integration
+
+![CI](https://github.com/Nivaes/Nivaes.Serializer/workflows/CI/badge.svg) 
+
+![Build Release](https://github.com/Nivaes/Nivaes.Serializer/workflows/Build%20Release/badge.svg)
