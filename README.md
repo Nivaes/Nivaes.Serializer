@@ -62,6 +62,4 @@ Los tipos de las propiedades deben ser compatibles con el generador. Los tipos g
 
 ## Integration
 
-![CI](https://github.com/Nivaes/Nivaes.Serializer/workflows/CI/badge.svg) 
-
-![Build Release](https://github.com/Nivaes/Nivaes.Serializer/workflows/Build%20Release/badge.svg)
+![CI](https://github.com/Nivaes/Nivaes.Serializer/workflows/CI/badge.svg) ![Build Release](https://github.com/Nivaes/Nivaes.Serializer/workflows/Build%20Release/badge.svg) [![Publish Release](https://github.com/Nivaes/Nivaes.Serializer/actions/workflows/publish_release.yaml/badge.svg)](https://github.com/Nivaes/Nivaes.Serializer/actions/workflows/publish_release.yaml)
