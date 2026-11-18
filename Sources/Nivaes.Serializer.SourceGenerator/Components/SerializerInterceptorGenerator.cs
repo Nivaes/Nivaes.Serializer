@@ -8,7 +8,7 @@ namespace Nivaes.Serializer.SourceGenerator;
 [Generator(LanguageNames.CSharp)]
 public sealed class SerializerInterceptorGenerator : IIncrementalGenerator
 {
-    private sealed class InterceptInfo
+    private sealed record InterceptInfo
     {
         public int Version { get; }
         public string LocationData { get; }

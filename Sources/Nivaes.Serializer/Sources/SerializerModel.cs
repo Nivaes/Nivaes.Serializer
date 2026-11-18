@@ -24,22 +24,12 @@ public static partial class SerializerModel
 
     public static ReadOnlySpan<byte> Serialize(int idType, in object value)
     {
-        if(SerializersCollections.IdTypeSerializers.TryGetValue(idType, out var serializer))
-        {
-            return serializer(value);
-        }
-
-        throw new Exception($"Type {idType} not registered.");
+        return SerializersCollections.Serialize(idType, in value);
     }
 
     public static ReadOnlySpan<byte> Serialize(Type type, in object value)
     {
-        if (SerializersCollections.TypeSerializers.TryGetValue(type, out var serializer))
-        {
-            return serializer(value);
-        }
-
-        throw new Exception($"Type {type.FullName!} not registered.");
+        return SerializersCollections.Serialize(type, in value);
     }
 
     public static T? Deserialize<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(ReadOnlySpan<byte> buffer)
@@ -61,22 +51,12 @@ public static partial class SerializerModel
 
     public static object? Deserialize(int idType, ReadOnlySpan<byte> buffer)
     {
-        if (SerializersCollections.IdTypeDeserializers.TryGetValue(idType, out var serializer))
-        {
-            return serializer(buffer);
-        }
-
-        throw new Exception($"Type {idType} not registered.");
+        return SerializersCollections.Deserialize(idType, buffer);
     }
 
     public static object? Deserialize(Type type, ReadOnlySpan<byte> buffer)
     {
-        if (SerializersCollections.TypeDeserializers.TryGetValue(type, out var serializer))
-        {
-            return serializer(buffer);
-        }
-
-        throw new Exception($"Type {type.FullName!} not registered.");
+        return SerializersCollections.Deserialize(type, buffer);
     }
 
     public static T? Clone<T>(in T value)
