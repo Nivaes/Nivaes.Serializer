@@ -17,7 +17,6 @@ internal ref struct RecursiveReader
     {
         public int IdReference;
         public object Deserializer;
-        //public DeserializeCircularDelegate DeserializerCircular;
         public Action<object>? DeserialiceReference;
     }
 

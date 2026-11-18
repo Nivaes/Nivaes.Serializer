@@ -1,0 +1,5 @@
+﻿<Project>
+    <PropertyGroup>
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);Nivaes.Serializer.SourceGenerator</InterceptorsNamespaces>
+    </PropertyGroup>
+</Project>

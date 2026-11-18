@@ -19,7 +19,8 @@
 	</PropertyGroup>
 
 	<PropertyGroup>
-		<_CommonTargets>net10.0</_CommonTargets>
+		<_CommonTarget>net11.0</_CommonTarget>
+		<_CommonTargets>net11.0</_CommonTargets>
 	</PropertyGroup>
 
 	<PropertyGroup>

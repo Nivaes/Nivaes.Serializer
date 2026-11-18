@@ -11,11 +11,14 @@ public class SimplePackGeneratorUnitTest
         _output = output;
     }
 
-    [SerializePacker]
+    [SerializeModel]
     public class SimpleModel
     {
         public required string String1 { get; set; }
         public required string String2 { get; set; }
+
+        [SerializeIgnore]
+        public string? String3 { get; set; }
     }
 
     [Fact]   
@@ -25,20 +28,22 @@ public class SimplePackGeneratorUnitTest
         {
             String1 = "String1",
             String2 = "String2",
+            String3 = "String3"
         };
 
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializePacker.Deserialize<SimpleModel>(cache);
+        var copyModel = SerializerModel.Deserialize<SimpleModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
         copyModel.String2.ShouldBe(model.String2);
+        copyModel.String3.ShouldNotBe(model.String3);
     }
 
 
@@ -49,16 +54,17 @@ public class SimplePackGeneratorUnitTest
         {
             String1 = null!,
             String2 = null!,
+            String3 = "String3"
         };
 
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializePacker.Deserialize<SimpleModel>(cache);
+        var copyModel = SerializerModel.Deserialize<SimpleModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -72,16 +78,17 @@ public class SimplePackGeneratorUnitTest
         {
             String1 = string.Empty,
             String2 = string.Empty,
+            String3 = "String3"
         };
 
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializePacker.Deserialize<SimpleModel>(cache);
+        var copyModel = SerializerModel.Deserialize<SimpleModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -95,12 +102,13 @@ public class SimplePackGeneratorUnitTest
         {
             String1 = test1,
             String2 = test2,
+            String3 = "String3"
         };
 
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializePacker.Deserialize<SimpleModel>(cache);
+        var copyModel = SerializerModel.Deserialize<SimpleModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -110,14 +118,14 @@ public class SimplePackGeneratorUnitTest
     [Theory, AutoData]
     public void SerializerAutoDataTest2(SimpleModel model)
     {
-        var cache = SerializePacker.Serialize(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializePacker.Deserialize<SimpleModel>(cache);
+        var copyModel = SerializerModel.Deserialize<SimpleModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);
@@ -131,9 +139,10 @@ public class SimplePackGeneratorUnitTest
         {
             String1 = "String1",
             String2 = "String2",
+            String3 = "String3"
         };
 
-        var copyModel = SerializePacker.Clone(model);
+        var copyModel = SerializerModel.Clone(model);
 
         copyModel.ShouldNotBeNull();
         copyModel.String1.ShouldBe(model.String1);

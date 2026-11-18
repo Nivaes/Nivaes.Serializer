@@ -2,5 +2,5 @@
 
 public interface IDeserializer<T>
 {
-    T? Deserialize(ref PackerReader reader);
+    T Deserialize(ref PackerReader reader);
 }

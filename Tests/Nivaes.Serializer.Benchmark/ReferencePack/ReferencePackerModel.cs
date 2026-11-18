@@ -1,13 +1,13 @@
 ﻿namespace Nivaes.Serializer.Benchmark.SimplePack;
 
-[SerializePacker]
+[SerializeModel]
 public class ReferencePackerModel
 {
     public required string String1 { get; set; }
     public required string String2 { get; set; }
 }
 
-[SerializePacker]
+[SerializeModel]
 public class RootPackerModel
 {
     public required string String1 { get; set; }

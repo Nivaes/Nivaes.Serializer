@@ -2,15 +2,33 @@
 
 namespace Nivaes.Serializer.SourceGenerator
 {
-    internal class DiagnosticDescriptors
+    internal static class DiagnosticDescriptors
     {
         public static readonly DiagnosticDescriptor UnsupportedProperty =
             new(
-             id: "SPK001",
-             title: "Unsupported property type",
-             messageFormat: "Property '{0}' has an unsupported type '{1}'.",
-             category: "SerializePacker",
-             DiagnosticSeverity.Error,
-             isEnabledByDefault: true);
+                id: "NVS001",
+                title: "Unsupported property type",
+                messageFormat: "Property '{0}' has an unsupported type '{1}'.",
+                category: "Nivaes.Serializer",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor MissingSerializeModelAttribute =
+            new(
+                id: "NVS002",
+                title: "Missing SerializeModelAttribute",
+                messageFormat: "The type '{0}' must be marked with [SerializeModel] to use Serialize, Deserialize or Clone.",
+                category: "Nivaes.Serializer",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor RequiredIgnoredMember = 
+            new(
+                id: "NVS003",
+                title: "Required member cannot be ignored",
+                messageFormat: "The required member '{0}' cannot have the [SerializeIgnore] attribute.",
+                category: "Nivaes.Serializer",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
     }
 }

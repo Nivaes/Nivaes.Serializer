@@ -1,15 +1,18 @@
-﻿namespace Nivaes.Serializer.UnitTest;
+﻿using System.Security.Cryptography;
 
-public class AllTypesPackUnitTest
+namespace Nivaes.Serializer.UnitTest;
+
+public class AllTypesPackGeneratorUnitTest
 {
     private readonly ITestOutputHelper _output;
 
-    public AllTypesPackUnitTest(ITestOutputHelper output)
+    public AllTypesPackGeneratorUnitTest(ITestOutputHelper output)
     {
         _output = output;
 
     }
 
+    [SerializeModel]
     public class AllTypesModel
     {
         public required Guid Guid { get; set; }
@@ -21,6 +24,9 @@ public class AllTypesPackUnitTest
 
         public required byte[] Bytes1 { get; set; }
         public required byte[] Bytes2 { get; set; }
+
+        public required Memory<byte> MemoryByte1 { get; set; }
+        public required Memory<byte> MemoryByte2 { get; set; }
 
         public required short Short1 { get; set; }
         public required short Short2 { get; set; }
@@ -50,120 +56,13 @@ public class AllTypesPackUnitTest
 
         public required decimal Decimal1 { get; set; }
         public required decimal Decimal2 { get; set; }
+      
 
         public required DateTime DateTime1 { get; set; }
         public required DateTime DateTime2 { get; set; }
 
         public required DateTimeOffset DateTimeOffset1 { get; set; }
         public required DateTimeOffset DateTimeOffset2 { get; set; }
-    }
-    public class AllTypesModelSerializerTest : ISerializer<AllTypesModel>
-    {
-        void ISerializer<AllTypesModel>.Serialize(scoped in AllTypesModel item, ref PackerWriter writer)
-        {
-            writer.Write(item.Guid);
-
-            writer.Write(item.Byte1);
-            writer.Write(item.Byte2);
-
-            writer.Write(item.Bytes1);
-            writer.Write(item.Bytes2);
-
-            writer.Write(item.Bool1);
-            writer.Write(item.Bool2);
-
-            writer.Write(item.Short1);
-            writer.Write(item.Short2);
-            writer.Write(item.Int1);
-            writer.Write(item.Int2);
-            writer.Write(item.Long1);
-            writer.Write(item.Long2);
-
-            writer.Write(item.UShort1);
-            writer.Write(item.UShort2);
-            writer.Write(item.UInt1);
-            writer.Write(item.UInt2);
-            writer.Write(item.ULong1);
-            writer.Write(item.ULong2);
-
-            writer.Write(item.String1);
-            writer.Write(item.String2);
-
-            writer.Write(item.Float1);
-            writer.Write(item.Float2);
-
-            writer.Write(item.Decimal1);
-            writer.Write(item.Decimal2);
-
-            writer.Write(item.Double1);
-            writer.Write(item.Double2);
-
-            writer.Write(item.Half1);
-            writer.Write(item.Half2);
-
-            writer.Write(item.DateTime1);
-            writer.Write(item.DateTime2);
-
-            writer.Write(item.DateTimeOffset1);
-            writer.Write(item.DateTimeOffset2);
-        }
-    }
-
-    public class AllTypesModelDeserializerTest : IDeserializer<AllTypesModel>
-    {
-        AllTypesModel? IDeserializer<AllTypesModel>.Deserialize(ref PackerReader reader)
-        {
-            var value = new AllTypesModel
-            {
-                Guid = reader.ReadGuid(),
-
-                Byte1 = reader.ReadByte(),
-                Byte2 = reader.ReadByte(),
-
-                Bytes1 = reader.ReadBytes()!,
-                Bytes2 = reader.ReadBytes()!,
-
-                Bool1 = reader.ReadBoolean(),
-                Bool2 = reader.ReadBoolean(),
-
-                Short1 = reader.ReadInt16(),
-                Short2 = reader.ReadInt16(),
-                Int1 = reader.ReadInt32(),
-                Int2 = reader.ReadInt32(),
-                Long1 = reader.ReadInt64(),
-                Long2 = reader.ReadInt64(),
-
-                UShort1 = reader.ReadUInt16(),
-                UShort2 = reader.ReadUInt16(),
-                UInt1 = reader.ReadUInt32(),
-                UInt2 = reader.ReadUInt32(),
-                ULong1 = reader.ReadUInt64(),
-                ULong2 = reader.ReadUInt64(),
-
-                String1 = reader.ReadString(),
-                String2 = reader.ReadString(),
-
-                Float1 = reader.ReadSingle(),
-                Float2 = reader.ReadSingle(),
-
-                Decimal1 = reader.ReadDecimal(),
-                Decimal2 = reader.ReadDecimal(),
-
-                Double1 = reader.ReadDouble(),
-                Double2 = reader.ReadDouble(),
-
-                Half1 = reader.ReadHalf(),
-                Half2 = reader.ReadHalf(),
-
-                DateTime1 = reader.ReadDateTime(),
-                DateTime2 = reader.ReadDateTime(),
-
-                DateTimeOffset1 = reader.ReadDateTimeOffset(),
-                DateTimeOffset2 = reader.ReadDateTimeOffset()
-            };
-
-            return value;
-        }
     }
 
     [Fact]
@@ -178,6 +77,9 @@ public class AllTypesPackUnitTest
 
             Bytes1 = [223, 232, 12, 32, 33, 01, 22, 36, 93],
             Bytes2 = [032, 9, 43, 241, 23, 53, 55],
+
+            MemoryByte1 = new Memory<byte>([23, 11,022, 32, 190, 241, 42]),
+            MemoryByte2 = new Memory<byte>([55, 93, 201, 192, 193, 233]),
 
             Bool1 = true,
             Bool2 = false,
@@ -209,7 +111,7 @@ public class AllTypesPackUnitTest
             Double2 = -23922.3939299294D,
 
             Half1 = (Half)9323.4333292F,
-            Half2 = (Half) (-322.394593393F),
+            Half2 = (Half)(-32.33333222F),
 
             DateTime1 = DateTime.Now,
             DateTime2 = DateTime.Now.AddSeconds(-2939844),
@@ -218,14 +120,14 @@ public class AllTypesPackUnitTest
             DateTimeOffset2 = DateTimeOffset.Now.AddSeconds(223934),
         };
 
-        var cache = SerializePacker.Serialize<AllTypesModel, AllTypesModelSerializerTest>(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
             string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
         );
 
-        var copyModel = SerializePacker.Deserialize<AllTypesModel, AllTypesModelDeserializerTest>(cache);
+        var copyModel = SerializerModel.Deserialize<AllTypesModel>(cache);
 
         copyModel.ShouldNotBeNull();
 
@@ -234,6 +136,9 @@ public class AllTypesPackUnitTest
 
         copyModel.Bytes1.ShouldBe(model.Bytes1);
         copyModel.Bytes2.ShouldBe(model.Bytes2);
+
+        copyModel.MemoryByte1.ShouldBe(model.MemoryByte1);
+        copyModel.MemoryByte2.ShouldBe(model.MemoryByte2);
 
         copyModel.Bool1.ShouldBe(model.Bool1);
         copyModel.Bool2.ShouldBe(model.Bool2);
@@ -284,8 +189,11 @@ public class AllTypesPackUnitTest
             Byte1 = Byte.MinValue,
             Byte2 = Byte.MaxValue,
 
-            Bytes1 = [32, 23, 32, 63, 3, 126, 122],
-            Bytes2 = [3, 2, 56, 33, 22, 52, 0, 255, 0, 255],
+            Bytes1 = RandomNumberGenerator.GetBytes(100),
+            Bytes2 = RandomNumberGenerator.GetBytes(100),
+
+            MemoryByte1 = new Memory<byte>(RandomNumberGenerator.GetBytes(100)),
+            MemoryByte2 = new Memory<byte>(RandomNumberGenerator.GetBytes(100)),
 
             Bool1 = false,
             Bool2 = true,
@@ -326,14 +234,14 @@ public class AllTypesPackUnitTest
             DateTimeOffset2 = DateTimeOffset.MaxValue,
         };
 
-        var cache = SerializePacker.Serialize<AllTypesModel, AllTypesModelSerializerTest>(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
         _output.WriteLine(
            string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
        );
 
-        var copyModel = SerializePacker.Deserialize<AllTypesModel, AllTypesModelDeserializerTest>(cache);
+        var copyModel = SerializerModel.Deserialize<AllTypesModel>(cache);
 
         copyModel.ShouldNotBeNull();
 
@@ -342,6 +250,9 @@ public class AllTypesPackUnitTest
 
         copyModel.Bytes1.ShouldBe(model.Bytes1);
         copyModel.Bytes2.ShouldBe(model.Bytes2);
+
+        copyModel.MemoryByte1.ShouldBe(model.MemoryByte1);
+        copyModel.MemoryByte2.ShouldBe(model.MemoryByte2);
 
         copyModel.Bool1.ShouldBe(model.Bool1);
         copyModel.Bool2.ShouldBe(model.Bool2);
@@ -369,11 +280,11 @@ public class AllTypesPackUnitTest
         copyModel.Decimal1.ShouldBe(model.Decimal1);
         copyModel.Decimal2.ShouldBe(model.Decimal2);
 
-        copyModel.Half1.ShouldBe(model.Half1);
-        copyModel.Half2.ShouldBe(model.Half2);
-
         copyModel.Double1.ShouldBe(model.Double1);
         copyModel.Double2.ShouldBe(model.Double2);
+
+        copyModel.Half1.ShouldBe(model.Half1);
+        copyModel.Half2.ShouldBe(model.Half2);
 
         copyModel.DateTime1.ShouldBe(model.DateTime1);
         copyModel.DateTime2.ShouldBe(model.DateTime2);
@@ -385,10 +296,10 @@ public class AllTypesPackUnitTest
     [Theory, AutoData]
     public void SerializerAllDataTest2(AllTypesModel model)
     {
-        var cache = SerializePacker.Serialize<AllTypesModel, AllTypesModelSerializerTest>(model);
+        var cache = SerializerModel.Serialize(model);
         cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
 
-        var copyModel = SerializePacker.Deserialize<AllTypesModel, AllTypesModelDeserializerTest>(cache);
+        var copyModel = SerializerModel.Deserialize<AllTypesModel>(cache);
 
         copyModel.ShouldNotBeNull();
         copyModel.Byte1.ShouldBe(model.Byte1);
@@ -396,6 +307,9 @@ public class AllTypesPackUnitTest
 
         copyModel.Bytes1.ShouldBe(model.Bytes1);
         copyModel.Bytes2.ShouldBe(model.Bytes2);
+
+        copyModel.MemoryByte1.ShouldBe(model.MemoryByte1);
+        copyModel.MemoryByte2.ShouldBe(model.MemoryByte2);
 
         copyModel.Bool1.ShouldBe(model.Bool1);
         copyModel.Bool2.ShouldBe(model.Bool2);
@@ -425,9 +339,6 @@ public class AllTypesPackUnitTest
 
         copyModel.Double1.ShouldBe(model.Double1);
         copyModel.Double2.ShouldBe(model.Double2);
-
-        copyModel.Half1.ShouldBe(model.Half1);
-        copyModel.Half2.ShouldBe(model.Half2);
 
         copyModel.DateTime1.ShouldBe(model.DateTime1);
         copyModel.DateTime2.ShouldBe(model.DateTime2);

@@ -1,6 +1,6 @@
 ﻿namespace Nivaes.Serializer.Benchmark.SimplePack;
 
-[SerializePacker]
+[SerializeModel]
 public class SimpleNivaesSerializeModel
 {
     public required string String1 { get; set; }
