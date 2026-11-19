@@ -13,7 +13,7 @@ public class CreateArraySerialize
         using Nivaes.Serializer;
 
         [SerializeModel]
-        public class SimpleModel 
+        public class SimpleModel
         {
             public required Guid Guid1 { get; set; }
             public required string String1 { get; set; }
@@ -27,36 +27,32 @@ public class CreateArraySerialize
         }
         ";
 
-        var syntaxTree = CSharpSyntaxTree.ParseText(
-            source,
-            new CSharpParseOptions(LanguageVersion.CSharp14));
-
+        var parseOptions = new CSharpParseOptions(LanguageVersion.CSharp14);
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions);
         var compilation = CreateCompilation(syntaxTree);
 
         IIncrementalGenerator generator = new SerializerPackerGenerator();
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generator.AsSourceGenerator());
+            generators: [generator.AsSourceGenerator()],
+            parseOptions: parseOptions);
 
         driver = driver.RunGeneratorsAndUpdateCompilation(
             compilation,
             out var outputCompilation,
             out var diagnostics);
 
-        // Assert
         var runResult = driver.GetRunResult();
 
         Assert.Empty(runResult.Diagnostics);
-
         Assert.NotEmpty(runResult.Results);
 
         var generatedSources = runResult.Results
-            .SelectMany(x => x.GeneratedSources)
+            .SelectMany(result => result.GeneratedSources)
             .ToArray();
 
-        // Comprobar que el código generado compila.
         var errors = outputCompilation.GetDiagnostics()
-            .Where(x => x.Severity == DiagnosticSeverity.Error)
+            .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToArray();
 
         errors.ShouldBeEmpty();
@@ -72,7 +68,7 @@ public class CreateArraySerialize
     }
 
     private static CSharpCompilation CreateCompilation(
-        SyntaxTree syntaxTree)
+        params SyntaxTree[] syntaxTrees)
     {
         var references = ((string)AppContext.GetData(
             "TRUSTED_PLATFORM_ASSEMBLIES")!)
@@ -86,7 +82,7 @@ public class CreateArraySerialize
 
         return CSharpCompilation.Create(
             "GeneratorTests",
-            [syntaxTree],
+            syntaxTrees,
             references,
             new CSharpCompilationOptions(
                 OutputKind.DynamicallyLinkedLibrary));
