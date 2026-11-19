@@ -8,26 +8,29 @@ namespace Nivaes.Serializer.SourceGenerator;
 [Generator(LanguageNames.CSharp)]
 public sealed class RegisterInterceptorGenerator : IIncrementalGenerator
 {
-    private sealed record InterceptInfo
+    private sealed class InterceptInfo
     {
         public int Version { get; }
         public string LocationData { get; }
         public string ModelType { get; }
         public string SerializerType { get; }
         public string DeserializerType { get; }
+        public uint IdClass { get; }
 
         public InterceptInfo(
             int version,
             string locationData,
             string modelType,
             string serializerType,
-            string deserializerType)
+            string deserializerType,
+            uint idClass)
         {
             Version = version;
             LocationData = locationData;
             ModelType = modelType;
             SerializerType = serializerType;
             DeserializerType = deserializerType;
+            IdClass = idClass;
         }
     }
 
@@ -46,15 +49,16 @@ public sealed class RegisterInterceptorGenerator : IIncrementalGenerator
                 {
                     var invocation = (InvocationExpressionSyntax)ctx.Node;
 
-                    if (ctx.SemanticModel.GetSymbolInfo(invocation, cancellationToken).Symbol
-                        is not IMethodSymbol method)
+                    if (ctx.SemanticModel.GetSymbolInfo(
+                            invocation,
+                            cancellationToken).Symbol is not IMethodSymbol method)
                     {
                         return null;
                     }
 
                     if (method.Name != "Register" ||
                         method.ContainingType.ToDisplayString() !=
-                        "Nivaes.Serializer.SerializersCollections" ||
+                        "Nivaes.Serializer.SerializerModel" ||
                         method.Arity != 1 ||
                         method.TypeArguments[0] is not INamedTypeSymbol model)
                     {
@@ -71,15 +75,22 @@ public sealed class RegisterInterceptorGenerator : IIncrementalGenerator
                     var modelType = model.ToDisplayString(
                         SymbolDisplayFormat.FullyQualifiedFormat);
 
-                    var serializerName = model.GetSerializerClassName();
-                    var deserializerName = model.GetDeserializerClassName();
+                    var serializerName =
+                        SourceGenerationHelper.GetSerializerClassName(model);
+
+                    var deserializerName =
+                        SourceGenerationHelper.GetDeserializerClassName(model);
+
+                    var idClass =
+                        SourceGenerationHelper.GetIdClass(model);
 
                     return new InterceptInfo(
                         location.Version,
                         location.Data,
                         modelType,
                         GetQualifiedTypeName(model, serializerName),
-                        GetQualifiedTypeName(model, deserializerName));
+                        GetQualifiedTypeName(model, deserializerName),
+                        idClass);
                 })
             .Where(static registration => registration is not null)
             .Collect();
@@ -110,13 +121,11 @@ public sealed class RegisterInterceptorGenerator : IIncrementalGenerator
 
                 source.AppendLine(
                     $"        [global::System.Runtime.CompilerServices.InterceptsLocation({item.Version}, {locationData})]");
-
-                // El interceptor conserva la firma visible Register<T>().
-                // El registro tipado y el id se resuelven aquí.
-                source.AppendLine($"        internal static void Register_{index}()");
+                source.AppendLine(
+                    $"        internal static void Register_{index}()");
                 source.AppendLine("        {");
                 source.AppendLine(
-                    $"            global::Nivaes.Serializer.SerializersCollections.Register<{item.ModelType}, {item.SerializerType}, {item.DeserializerType}>(typeof({item.ModelType}).GetHashCode());");
+                    $"            global::Nivaes.Serializer.SerializerModel.Register<{item.ModelType}, {item.SerializerType}, {item.DeserializerType}>({item.IdClass}u);");
                 source.AppendLine("        }");
                 source.AppendLine();
 
@@ -147,7 +156,6 @@ public sealed class RegisterInterceptorGenerator : IIncrementalGenerator
         """
         namespace System.Runtime.CompilerServices
         {
-            [global::System.Diagnostics.Conditional("DEBUG")]
             [global::System.AttributeUsage(
                 global::System.AttributeTargets.Method,
                 AllowMultiple = true)]

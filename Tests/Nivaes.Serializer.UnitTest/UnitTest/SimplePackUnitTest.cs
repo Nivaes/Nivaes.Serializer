@@ -150,9 +150,9 @@ public class SimplePackUnitTest
     [Fact]
     public void SerializerCollectionsTest()
     {
-        int idClass = typeof(SimpleModel).GetHashCode();
+        var idClass = SerializerModel.GetIdClass<SimpleModel>();
 
-        SerializersCollections.Register<SimpleModel, SimpleModelTestSerializer, SimpleModelTestDeserializer>(idClass);
+        SerializerModel.Register<SimpleModel, SimpleModelTestSerializer, SimpleModelTestDeserializer>(idClass);
 
         var model = new SimpleModel()
         {

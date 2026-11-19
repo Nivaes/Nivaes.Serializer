@@ -212,4 +212,40 @@ public class RecursiveCircularReferenceUnitTest
         copyModel.Reference1.Reference1.ShouldNotBeNull().ShouldBe(copyModel);
         copyModel.Reference2.ShouldBeNull();
     }
+
+    [Fact]
+    public void SerializerCollectionsTest()
+    {       
+        var idClass = SerializerModel.GetIdClass<ReferenceModel>();
+
+        SerializerModel.Register<ReferenceModel, ReferenceModelTestSerializer, ReferenceModelTestDeserializer>(idClass);
+
+        var model = new ReferenceModel
+        {
+            String1 = "test1",
+            String2 = "test2",
+            Reference1 = new ReferenceModel
+            {
+                String1 = "test3",
+                String2 = "test4",
+                Reference1 = null!
+            }
+        };
+        model.Reference1.Reference1 = model;
+
+        object objectModel = model;
+
+        var cache = SerializerModel.Serialize(idClass, objectModel);
+        cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
+
+        _output.WriteLine(
+            string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
+        );
+
+        var copyModel = (ReferenceModel?)SerializerModel.Deserialize(idClass, cache);
+
+        copyModel.ShouldNotBeNull();
+        copyModel.String1.ShouldBe(model.String1);
+        copyModel.String2.ShouldBe(model.String2);
+    }
 }

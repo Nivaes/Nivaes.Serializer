@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Nivaes.Serializer;
 
-public static class SerializersCollections
+internal static class SerializersCollections
 {
     private delegate byte[] SerializeDelegate(in object value);
     private delegate object? DeserializeDelegate(ReadOnlySpan<byte> buffer);
@@ -12,32 +12,31 @@ public static class SerializersCollections
 
     private static readonly Dictionary<Type, DeserializeDelegate> TypeDeserializers = new();
 
-    private static readonly Dictionary<int, SerializeDelegate> IdTypeSerializers = new();
+    private static readonly Dictionary<uint, SerializeDelegate> IdTypeSerializers = new();
 
-    private static readonly Dictionary<int, DeserializeDelegate> IdTypeDeserializers = new();
+    private static readonly Dictionary<uint, DeserializeDelegate> IdTypeDeserializers = new();
 
     public static int IdClass<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
     {
         return 0;
     }
 
-    public static void Register<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
-    {
-        throw new NotSupportedException("This method should be intercepted.");
-    }
-
+    private static Lock registerLock = new();
     public static void Register<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T,
         TSerializer,
-        TDeserializer>(int idClass)
+        TDeserializer>(uint idClass)
         where TSerializer : ISerializer<T>, new()
         where TDeserializer : IDeserializer<T>, new()
     {
-        TypeSerializers.Add(typeof(T), Serialize<T, TSerializer>);
-        IdTypeSerializers.Add(idClass, Serialize<T, TSerializer>);
+        lock (registerLock)
+        {
+            TypeSerializers.TryAdd(typeof(T), Serialize<T, TSerializer>);
+            IdTypeSerializers.TryAdd(idClass, Serialize<T, TSerializer>);
 
-        TypeDeserializers.Add(typeof(T), Deserialize<T, TDeserializer>);
-        IdTypeDeserializers.Add(idClass, Deserialize<T, TDeserializer>);
+            TypeDeserializers.TryAdd(typeof(T), Deserialize<T, TDeserializer>);
+            IdTypeDeserializers.TryAdd(idClass, Deserialize<T, TDeserializer>);
+        }
     }
 
     private static byte[] Serialize<T, TSerializer>(in object value)
@@ -55,7 +54,7 @@ public static class SerializersCollections
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static ReadOnlySpan<byte> Serialize(int idType, in object value)
+    internal static ReadOnlySpan<byte> Serialize(uint idType, in object value)
     {
         if (SerializersCollections.IdTypeSerializers.TryGetValue(idType, out var serializer))
         {
@@ -75,7 +74,7 @@ public static class SerializersCollections
         throw new Exception($"Type {type.FullName!} not registered.");
     }
 
-    internal static object? Deserialize(int idType, ReadOnlySpan<byte> buffer)
+    internal static object? Deserialize(uint idType, ReadOnlySpan<byte> buffer)
     {
         if (SerializersCollections.IdTypeDeserializers.TryGetValue(idType, out var serializer))
         {

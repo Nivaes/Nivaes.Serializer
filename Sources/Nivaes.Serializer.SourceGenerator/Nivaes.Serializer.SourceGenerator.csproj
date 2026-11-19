@@ -12,6 +12,7 @@
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 
 		<LangVersion>latest</LangVersion>
+		<!--<LangVersion>14.0</LangVersion>-->
 		<Nullable>enable</Nullable>
 
 		<IsPackable>false</IsPackable>
