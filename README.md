@@ -42,6 +42,21 @@ public class Person
 
 `SerializerModel.Clone(person)` crea una copia del modelo usando la serialización generada.
 
+## Serialización dinámica
+
+Para serializar un modelo cuyo tipo se conoce en tiempo de ejecución, regístralo una vez antes de usar las sobrecargas dinámicas. El generador proporciona el registro y el identificador del modelo:
+
+```csharp
+uint id = SerializerModel.GetIdClass<Person>();
+SerializerModel.Register<Person>();
+
+object value = new Person { Name = "Ada", Age = 36 };
+ReadOnlySpan<byte> data = SerializerModel.Serialize(id, value);
+Person? copy = (Person?)SerializerModel.Deserialize(id, data);
+```
+
+También puedes despachar por tipo en tiempo de ejecución usando `SerializerModel.Serialize(typeof(Person), value)` y `SerializerModel.Deserialize(typeof(Person), data)`. Para esta opción, el modelo también debe estar registrado. `GetIdClass<T>()` produce el identificador asociado al tipo en la compilación; úsalo para obtenerlo en lugar de definirlo manualmente.
+
 ## Selección de propiedades
 
 Se serializan las propiedades públicas de instancia que tienen getter y setter públicos. Las propiedades heredadas también se incluyen. Para excluir una propiedad, usa `[SerializeIgnore]`:
@@ -59,6 +74,14 @@ public class Account
 
 Los tipos de las propiedades deben ser compatibles con el generador. Los tipos genéricos y anidados anotados no se generan actualmente.
 
+
+## Desarrollo
+
+Para ejecutar las pruebas desde la raíz del repositorio:
+
+```bash
+dotnet test
+```
 
 ## Integration
 
