@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Net.Http.Headers;
 
 namespace Nivaes.Serializer;
 
@@ -21,7 +22,17 @@ public static partial class SerializerModel
         return write.WriteRoot(value, serializer);
     }
 
-    public static T? Deserialize<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(ReadOnlySpan<byte> cache)
+    public static ReadOnlySpan<byte> Serialize(int idType, in object value)
+    {
+        return SerializersCollections.Serialize(idType, in value);
+    }
+
+    public static ReadOnlySpan<byte> Serialize(Type type, in object value)
+    {
+        return SerializersCollections.Serialize(type, in value);
+    }
+
+    public static T? Deserialize<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(ReadOnlySpan<byte> buffer)
     {
         throw new NotSupportedException("This method should be intercepted.");
     }
@@ -36,6 +47,16 @@ public static partial class SerializerModel
         recursiveReader.DeserializeCircular();
 
         return value;
+    }
+
+    public static object? Deserialize(int idType, ReadOnlySpan<byte> buffer)
+    {
+        return SerializersCollections.Deserialize(idType, buffer);
+    }
+
+    public static object? Deserialize(Type type, ReadOnlySpan<byte> buffer)
+    {
+        return SerializersCollections.Deserialize(type, buffer);
     }
 
     public static T? Clone<T>(in T value)

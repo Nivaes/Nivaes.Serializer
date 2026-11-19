@@ -146,4 +146,32 @@ public class SimplePackUnitTest
         copyModel.String1.ShouldBe(model.String1);
         copyModel.String2.ShouldBe(model.String2);
     }
+
+    [Fact]
+    public void SerializerCollectionsTest()
+    {
+        int idClass = typeof(SimpleModel).GetHashCode();
+
+        SerializersCollections.Register<SimpleModel, SimpleModelTestSerializer, SimpleModelTestDeserializer>(idClass);
+
+        var model = new SimpleModel()
+        {
+            String1 = "String1",
+            String2 = "String2",
+        };
+        object objectModel = model;
+
+        var cache = SerializerModel.Serialize(idClass, objectModel);
+        cache.ToArray().ShouldNotBeNull().ShouldNotBeEmpty();
+
+        _output.WriteLine(
+            string.Join(" ", cache.ToArray().Select((b, i) => $"{i}:{b}"))
+        );
+
+        var copyModel = (SimpleModel?)SerializerModel.Deserialize(idClass, cache);
+
+        copyModel.ShouldNotBeNull();
+        copyModel.String1.ShouldBe(model.String1);
+        copyModel.String2.ShouldBe(model.String2);
+    }
 }
