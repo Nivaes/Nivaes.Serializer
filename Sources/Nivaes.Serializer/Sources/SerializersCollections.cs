@@ -16,6 +16,11 @@ public static class SerializersCollections
 
     private static readonly Dictionary<int, DeserializeDelegate> IdTypeDeserializers = new();
 
+    public static int IdClass<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
+    {
+        return 0;
+    }
+
     public static void Register<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
     {
         throw new NotSupportedException("This method should be intercepted.");
